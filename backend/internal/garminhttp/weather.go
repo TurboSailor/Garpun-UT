@@ -37,8 +37,7 @@ func (h *Handler) handleWeather(req *Request) *Response {
 		return nil
 	}
 
-	lat := req.QueryFloat("lat", 0)
-	lon := req.QueryFloat("lon", 0)
+	lat, lon := weatherCoords(req.QueryFloat("lat", 0), req.QueryFloat("lon", 0))
 
 	ctx, cancel := context.WithTimeout(context.Background(), h.opts.Timeout)
 	defer cancel()
@@ -93,4 +92,19 @@ func notFound() *Response {
 	resp.Body = []byte("{}")
 	resp.SetHeader("Content-Type", "application/json")
 	return resp
+}
+
+// weatherCoords normalises the lat/lon query parameters the watch sticks on
+// its GCS weather URLs. Real firmware sends Garmin semicircles (values on the
+// order of 1e8–1e9); unit tests and older firmware send plain degrees. Anything
+// outside the geographic range is treated as semicircles.
+func weatherCoords(lat, lon float64) (float64, float64) {
+	const scale = 180.0 / 2147483648.0
+	if lat < -90 || lat > 90 {
+		lat *= scale
+	}
+	if lon < -180 || lon > 180 {
+		lon *= scale
+	}
+	return lat, lon
 }
