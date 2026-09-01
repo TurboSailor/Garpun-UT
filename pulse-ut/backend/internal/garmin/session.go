@@ -104,6 +104,8 @@ type Hooks struct {
 	Protobuf func(requestID uint16, payload []byte) ([]byte, error)
 	// FileDownloaded is called for every completed non-directory file.
 	FileDownloaded func(entry DirectoryEntry, data []byte) error
+	// HaveFile reports whether a directory entry was already downloaded.
+	HaveFile func(entry DirectoryEntry) bool
 }
 
 // NewSession starts the dispatch loop over an open transport.

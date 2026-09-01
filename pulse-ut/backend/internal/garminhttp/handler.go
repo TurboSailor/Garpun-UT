@@ -67,10 +67,11 @@ type Handler struct {
 
 	client    *http.Client
 	transfers *dataTransfer
+	chain     []interceptor
 
-	mu              sync.Mutex
-	send            func(requestID uint16, payload []byte)
-	agps            map[string]*agpsEntry
+	mu   sync.Mutex
+	send func(requestID uint16, payload []byte)
+	agps map[string]*agpsEntry
 }
 
 // New builds a handler. The logger must not be nil.
@@ -85,13 +86,23 @@ func New(log *slog.Logger, opts Options) *Handler {
 	if client == nil {
 		client = &http.Client{Timeout: opts.Timeout}
 	}
-	return &Handler{
+	h := &Handler{
 		log:       log,
 		opts:      opts,
 		client:    client,
 		transfers: newDataTransfer(),
 		agps:      make(map[string]*agpsEntry),
 	}
+	// Mirrors the reference chain: the first interceptor that claims the
+	// request answers it, and the firewall is always last.
+	h.chain = []interceptor{
+		{"weather", isWeatherRequest, h.handleWeather},
+		{"agps", isAgpsRequest, h.handleAgps},
+		{"oauth", isOauthRequest, h.handleOauth},
+		{"contacts", isContactsRequest, h.handleContacts},
+		{"firewall", func(*Request) bool { return true }, h.handleFirewall},
+	}
+	return h
 }
 
 // SetSender installs the callback used for replies that cannot be produced
@@ -172,23 +183,11 @@ func serviceName(smart *pb.Smart) string {
 	}
 }
 
-// interceptor mirrors the reference chain: the first one that claims the
-// request answers it.
+// interceptor is one link of the HTTP chain built in New.
 type interceptor struct {
 	name    string
 	matches func(*Request) bool
 	handle  func(*Request) *Response
-}
-
-func (h *Handler) interceptors() []interceptor {
-	return []interceptor{
-		{"weather", isWeatherRequest, h.handleWeather},
-		{"agps", isAgpsRequest, h.handleAgps},
-		{"oauth", isOauthRequest, h.handleOauth},
-		{"contacts", isContactsRequest, h.handleContacts},
-		// Always last: proxies or blocks everything else.
-		{"firewall", func(*Request) bool { return true }, h.handleFirewall},
-	}
 }
 
 func (h *Handler) handleHTTP(requestID uint16, svc *pb.HttpService) *pb.Smart {
@@ -224,7 +223,7 @@ func (h *Handler) handleHTTP(requestID uint16, svc *pb.HttpService) *pb.Smart {
 }
 
 func (h *Handler) runInterceptors(req *Request) *pb.Smart {
-	for _, in := range h.interceptors() {
+	for _, in := range h.chain {
 		if !in.matches(req) {
 			continue
 		}

@@ -13,7 +13,7 @@ Rectangle {
         opacity = 1;
     }
 
-    width: Math.min(parent ? parent.width - 2 * Pulse.l : 0, label.implicitWidth + 2 * Pulse.l)
+    width: parent ? Math.min(parent.width - 2 * Pulse.l, units.gu(40)) : 0
     height: label.implicitHeight + 2 * Pulse.m
     radius: Pulse.radiusPill
     color: Pulse.cardAlt

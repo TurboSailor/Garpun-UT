@@ -1,7 +1,8 @@
 #!/bin/bash
 # Click entry point: bring up the pulsed daemon (once), then hand over to the UI.
-# The daemon lives in the app confinement, so it dies with the session; the UI
-# talks to it over http://127.0.0.1:21830 only.
+# The daemon is detached into its own session so it survives UI restarts; it still
+# runs under the app AppArmor profile, and the UI only talks to it over
+# http://127.0.0.1:21830.
 set -u
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"

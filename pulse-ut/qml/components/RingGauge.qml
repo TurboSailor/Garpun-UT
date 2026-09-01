@@ -26,12 +26,13 @@ Item {
     Component.onCompleted: retarget()
 
     function retarget() {
+        var target = Pulse.safe(progress);
         if (!animate) {
-            shown = progress;
+            shown = target;
             return;
         }
         entry.stop();
-        entry.to = progress;
+        entry.to = target;
         entry.start();
     }
 
@@ -45,11 +46,13 @@ Item {
     }
 
     onShownChanged: canvas.requestPaint()
-    Connections {
-        target: Pulse
-        onAccentChanged: canvas.requestPaint()
-        onDarkChanged: canvas.requestPaint()
-    }
+
+    // Repainting is driven by plain bindings so a theme or accent switch
+    // redraws without wiring up signal handlers.
+    readonly property color trackColor: Pulse.cardAlt
+    onTrackColorChanged: canvas.requestPaint()
+    onFromChanged: canvas.requestPaint()
+    onToChanged: canvas.requestPaint()
 
     Canvas {
         id: canvas
@@ -74,7 +77,7 @@ Item {
 
             // track
             ctx.beginPath();
-            ctx.strokeStyle = Pulse.cardAlt;
+            ctx.strokeStyle = root.trackColor;
             ctx.arc(cx, cy, r, 0, Math.PI * 2);
             ctx.stroke();
 

@@ -223,20 +223,23 @@ func (b *Bridge) onCallState(path dbus.ObjectPath, state, line, name string) {
 }
 
 // AcceptCall answers the call currently ringing.
-func (b *Bridge) AcceptCall() error { return b.callAction("Answer") }
+func (b *Bridge) AcceptCall() error { return b.callAction("Answer", true) }
 
 // RejectCall hangs up the call currently ringing or in progress.
-func (b *Bridge) RejectCall() error { return b.callAction("Hangup") }
+func (b *Bridge) RejectCall() error { return b.callAction("Hangup", false) }
 
-func (b *Bridge) callAction(method string) error {
+func (b *Bridge) callAction(method string, needRinging bool) error {
 	if b.calls == nil || b.calls.conn == nil {
 		return fmt.Errorf("uxbridge: telephony unavailable")
 	}
 	b.calls.mu.Lock()
-	path := b.calls.active
+	path, ringing := b.calls.active, b.calls.ringing
 	b.calls.mu.Unlock()
 	if path == "" {
 		return fmt.Errorf("uxbridge: no active call")
+	}
+	if needRinging && !ringing {
+		return fmt.Errorf("uxbridge: call is not ringing")
 	}
 	call := b.calls.conn.Object(ofonoBus, path).Call(ifaceOfonoCall+"."+method, 0)
 	if call.Err != nil {

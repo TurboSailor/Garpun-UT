@@ -17,6 +17,9 @@ Canvas {
     renderTarget: Canvas.Image
     height: units.gu(11)
 
+    // Stage colours come from the theme, so a light/dark switch must repaint.
+    readonly property color tick: Pulse.textDim
+    onTickChanged: requestPaint()
     onStagesChanged: requestPaint()
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()

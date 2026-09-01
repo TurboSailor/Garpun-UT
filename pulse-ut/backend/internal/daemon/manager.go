@@ -431,6 +431,10 @@ func (m *Manager) wireHooks(sess *garmin.Session, row *store.Device) {
 		})
 	}
 
+	sess.Hooks.HaveFile = func(entry garmin.DirectoryEntry) bool {
+		return m.db.HasFitFile(deviceID, int(entry.FileNumber))
+	}
+
 	sess.Hooks.FileDownloaded = func(entry garmin.DirectoryEntry, data []byte) error {
 		f := &store.FitFile{
 			DeviceID:     deviceID,

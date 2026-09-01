@@ -38,6 +38,7 @@ QtObject {
     property var scan: []
     property var pairing: ({ pending: false })
     property bool scanning: false
+    property bool ringing: false
 
     property bool todayLoading: false
     property bool healthLoading: false
@@ -68,7 +69,14 @@ QtObject {
     })
     property bool settingsLoaded: false
 
-    signal toast(string message)
+    // Toast plumbing as plain state: Main watches the counter, so no
+    // Connections object is needed anywhere.
+    property string toastText: ""
+    property int toastSeq: 0
+    function toast(message) {
+        toastText = message;
+        toastSeq = toastSeq + 1;
+    }
 
     // =====================================================================
     // loaders
@@ -202,15 +210,6 @@ QtObject {
         });
     }
 
-    function reloadAll() {
-        refreshStatus();
-        loadToday();
-        loadHealth();
-        loadSleep();
-        loadWorkouts();
-        loadDevices();
-    }
-
     // =====================================================================
     // actions
     // =====================================================================
@@ -292,10 +291,20 @@ QtObject {
                  function (msg) { markOffline(msg); toast("Sync failed"); });
     }
     function findWatch(sec) {
-        Api.findWatch(sec, function () { markOnline(); toast("Watch is ringing"); },
-                      function (msg) { markOffline(msg); toast("Find my watch failed"); });
+        Api.findWatch(sec, function () {
+            markOnline();
+            ringing = true;
+            ringTimer.interval = sec * 1000;
+            ringTimer.restart();
+            toast("Watch is ringing");
+        }, function (msg) {
+            markOffline(msg);
+            toast("Find my watch failed");
+        });
     }
     function cancelFindWatch() {
+        ringing = false;
+        ringTimer.stop();
         Api.findWatchCancel(function () { markOnline(); }, function (msg) { markOffline(msg); });
     }
 
@@ -377,6 +386,11 @@ QtObject {
         loadSettings();
         refreshStatus();
         loadDevices();
+        loadToday();
+        loadHealth();
+        loadSleep();
+        loadWorkouts();
+        loadNotifications();
         openStream();
         statusPoll.start();
     }
@@ -412,6 +426,14 @@ QtObject {
         interval: 800
         repeat: true
         onTriggered: store.pollPairing()
+    }
+
+    // The daemon stops the alarm on its own after `seconds`; mirror that here
+    // so the button goes back to "Find my watch" without a round trip.
+    property Timer ringTimer: Timer {
+        interval: 30000
+        repeat: false
+        onTriggered: store.ringing = false
     }
 
     property Timer reloadDebounce: Timer {

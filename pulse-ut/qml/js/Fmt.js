@@ -58,6 +58,27 @@ function durationTrim(mins) {
     return s.replace(/\s+$/, "");
 }
 
+// m/s -> "5:24 /km" (or /mi). Running and walking are read as pace, not speed.
+function pace(mps, unitSystem) {
+    if (!has(mps) || mps <= 0.15) return EMPTY;
+    var perUnit = (unitSystem === "imperial" ? 1609.344 : 1000) / mps;
+    var m = Math.floor(perUnit / 60);
+    var s = Math.round(perUnit % 60);
+    if (s === 60) { m += 1; s = 0; }
+    if (m > 99) return EMPTY;
+    return m + ":" + pad2(s) + " /" + distanceUnit(unitSystem);
+}
+
+// m/s -> minutes per unit, for charting where a number is needed.
+function paceMinutes(mps, unitSystem) {
+    if (!has(mps) || mps <= 0.15) return 0;
+    return (unitSystem === "imperial" ? 1609.344 : 1000) / mps / 60;
+}
+
+function isFootSport(sport) {
+    return sport === 1 || sport === 11 || sport === 17;
+}
+
 // seconds -> "1:04:22" / "4:22"
 function clock(secs) {
     if (!has(secs) || secs < 0) return EMPTY;

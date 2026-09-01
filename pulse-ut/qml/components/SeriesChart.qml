@@ -108,7 +108,9 @@ Item {
         }
     }
 
-    Column {
+    // Two anchored labels rather than a stretched Column: a positioner whose
+    // children depend on its own height is a binding loop waiting to happen.
+    Item {
         id: axis
         anchors.right: parent.right
         anchors.top: parent.top
@@ -116,21 +118,20 @@ Item {
         width: units.gu(5)
 
         Label {
+            anchors.right: parent.right
+            anchors.top: parent.top
             text: root.computed.count > 0 ? Fmt.trimNum(root.vmax, root.decimals) : ""
             color: Pulse.textDim
             font.family: Pulse.face
             font.pixelSize: Pulse.micro
-            horizontalAlignment: Text.AlignRight
-            width: parent.width
         }
-        Item { width: 1; height: axis.height - 2 * Pulse.micro - units.dp(6) }
         Label {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
             text: root.computed.count > 0 ? Fmt.trimNum(root.vmin, root.decimals) : ""
             color: Pulse.textDim
             font.family: Pulse.face
             font.pixelSize: Pulse.micro
-            horizontalAlignment: Text.AlignRight
-            width: parent.width
         }
     }
 }

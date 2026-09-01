@@ -21,9 +21,9 @@ import (
 // with an etag so the watch can skip unchanged data.
 
 const (
-	agpsMaxBytes  = 1 << 20 // they are usually ~60 KB
-	agpsMaxAge    = 14400   // seconds, matches the cache-control we advertise
-	agpsMaxAgeAge = 604800  // rxnetworks payloads older than 7 days are stale
+	agpsMaxBytes   = 1 << 20 // they are usually ~60 KB
+	agpsMaxAge     = 14400   // seconds, matches the cache-control we advertise
+	agpsStaleAfter = 604800  // rxnetworks payloads older than 7 days are stale
 )
 
 var (
@@ -204,7 +204,7 @@ func validateAgpsRxNetworks(data []byte, now time.Time) error {
 	if age < 0 {
 		return fmt.Errorf("rxnetworks timestamp %d is in the future", stamp)
 	}
-	if age > agpsMaxAgeAge {
+	if age > agpsStaleAfter {
 		return fmt.Errorf("rxnetworks timestamp %d is older than 7 days", stamp)
 	}
 	return nil

@@ -17,11 +17,13 @@ Rectangle {
     property bool loading: false
     signal clicked()
 
-    readonly property real clamped: Math.max(0, Math.min(1, factor))
+    readonly property real clamped: Pulse.clamp01(factor)
 
     radius: Pulse.radiusTile
     color: Pulse.card
-    implicitHeight: body.height + 2 * Pulse.m + bar.height + Pulse.s
+    // Floored so a row of tiles stays level whether or not the caption has
+    // something to say.
+    implicitHeight: Math.max(units.gu(13), body.height + 2 * Pulse.m + bar.height + Pulse.s)
 
     // progress wash, rotated so the gradient grows from the bottom edge
     Rectangle {
@@ -90,7 +92,7 @@ Rectangle {
         }
 
         Label {
-            visible: !root.loading && root.caption.length > 0
+            visible: !root.loading
             text: root.caption
             color: Pulse.textDim
             font.family: Pulse.face

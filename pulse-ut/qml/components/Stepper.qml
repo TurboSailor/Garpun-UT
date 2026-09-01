@@ -12,7 +12,7 @@ Row {
     property real minimum: 0
     property real maximum: 1000000
     property string display: "" + value
-    signal changed(real value)
+    signal valueRequested(real value)
 
     spacing: Pulse.s
 
@@ -20,7 +20,7 @@ Row {
         var next = Math.round((value + dir * step) / step) * step;
         if (next < minimum) next = minimum;
         if (next > maximum) next = maximum;
-        if (next !== value) root.changed(next);
+        if (next !== value) root.valueRequested(next);
     }
 
     Component {

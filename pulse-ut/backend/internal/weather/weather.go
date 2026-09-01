@@ -130,6 +130,9 @@ type spec struct {
 	observedAt int64
 	lat, lon   float64
 	location   string
+	// utcOffset is the forecast location's offset, so weekdays are named in
+	// its calendar rather than the daemon host's.
+	utcOffset int
 
 	temp          int
 	feelsLike     int

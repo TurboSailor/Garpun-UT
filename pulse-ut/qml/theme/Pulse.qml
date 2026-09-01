@@ -84,6 +84,18 @@ QtObject {
     readonly property int ring: 820
 
     // ---- helpers ---------------------------------------------------------
+    // Guards every factor that reaches a gradient stop or a bar width: a NaN
+    // there is not a visual glitch, it takes the scene graph down.
+    function clamp01(v) {
+        if (v === undefined || v === null || isNaN(v)) return 0;
+        if (v < 0) return 0;
+        if (v > 1) return 1;
+        return v;
+    }
+    function safe(v) {
+        return (v === undefined || v === null || isNaN(v) || !isFinite(v)) ? 0 : v;
+    }
+
     function shade(c, f) {
         return Qt.rgba(c.r * f, c.g * f, c.b * f, c.a);
     }
@@ -133,6 +145,30 @@ QtObject {
         case "respiration": return "Respiration";
         }
         return key;
+    }
+
+    function metricGlyph(key) {
+        switch (key) {
+        case "steps": return "steps";
+        case "distance": return "route";
+        case "activetime":
+        case "intensity": return "bolt";
+        case "calories": return "flame";
+        case "sleep": return "moon";
+        case "heart_rate":
+        case "resting_hr": return "pulse";
+        case "body_energy": return "battery";
+        case "stress": return "gauge";
+        case "spo2": return "drop";
+        case "hrv": return "heart";
+        case "respiration": return "wave";
+        }
+        return "star";
+    }
+
+    // Lower is better for these, so a negative delta is the good direction.
+    function metricInverted(key) {
+        return key === "stress" || key === "resting_hr" || key === "respiration";
     }
 
     // Normalised 0..1 gauge factor per metric (docs §3.1 resolveMetric).

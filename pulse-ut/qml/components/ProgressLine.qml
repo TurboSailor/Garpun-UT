@@ -16,8 +16,9 @@ Rectangle {
         height: parent.height
         radius: parent.radius
         color: root.hue
-        width: Math.max(root.factor > 0 ? parent.height : 0,
-                        Math.min(1, Math.max(0, root.factor)) * parent.width)
+        width: Pulse.clamp01(root.factor) > 0
+               ? Math.max(parent.height, Pulse.clamp01(root.factor) * parent.width)
+               : 0
         Behavior on width { NumberAnimation { duration: Pulse.slow; easing.type: Easing.OutQuart } }
     }
 }

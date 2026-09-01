@@ -251,6 +251,20 @@ func (s *Session) onDirectory(data []byte) {
 	}
 
 	s.log.Info("garmin: directory received", "entries", len(data)/16, "queued", len(queue))
+	// Files already stored locally only need the ARCHIVE flag so the watch
+	// stops offering them; downloading them again wastes minutes of airtime.
+	if s.Hooks.HaveFile != nil {
+		kept := queue[:0]
+		for _, e := range queue {
+			if s.Hooks.HaveFile(e) {
+				s.archive(e)
+				continue
+			}
+			kept = append(kept, e)
+		}
+		queue = kept
+	}
+
 	s.mu.Lock()
 	s.queue = queue
 	s.mu.Unlock()
