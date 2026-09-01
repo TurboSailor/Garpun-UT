@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"pulse/backend/internal/fit"
 	"pulse/backend/internal/gfdi"
 )
 
@@ -437,23 +438,48 @@ func (s *Session) pushWeather(req *gfdi.WeatherRequest) {
 	s.SendFitRecords(payload)
 }
 
-// SendFitRecords pushes an already encoded FIT definition+data blob to the
-// watch as 5011/5012 messages.
+// SendFitRecords pushes an encoded FIT record stream to the watch. Definition
+// records must travel in FIT_DEFINITION (5011) messages; the watch rejects a
+// FIT_DATA payload that contains a definition header, so the two are split.
 func (s *Session) SendFitRecords(blob []byte) {
-	// The blob is a FIT record stream; definitions must go first, so callers
-	// build it with definitions leading. Chunk to maxPacketSize minus frame
-	// overhead (2 size + 2 id + 2 crc).
+	if len(blob) == 0 {
+		return
+	}
 	s.mu.Lock()
-	limit := s.maxPacketSize - 6
+	limit := s.maxPacketSize - 6 // 2 size + 2 id + 2 crc
 	s.mu.Unlock()
 	if limit < 32 {
 		limit = 32
 	}
-	for off := 0; off < len(blob); off += limit {
-		end := off + limit
-		if end > len(blob) {
-			end = len(blob)
-		}
-		s.send(gfdi.BuildFrame(gfdi.MsgFitData, blob[off:end]))
+
+	definitions, data := fit.SplitRecords(blob)
+	for _, chunk := range chunkBytes(definitions, limit) {
+		s.send(gfdi.BuildFrame(gfdi.MsgFitDefinition, chunk))
 	}
+	for _, chunk := range chunkBytes(data, limit) {
+		s.send(gfdi.BuildFrame(gfdi.MsgFitData, chunk))
+	}
+}
+
+func chunkBytes(b []byte, limit int) [][]byte {
+	if len(b) == 0 {
+		return nil
+	}
+	out := make([][]byte, 0, (len(b)+limit-1)/limit)
+	for off := 0; off < len(b); off += limit {
+		end := off + limit
+		if end > len(b) {
+			end = len(b)
+		}
+		out = append(out, b[off:end])
+	}
+	return out
+}
+
+// SendMusicEntityUpdate pushes now-playing metadata to the watch.
+func (s *Session) SendMusicEntityUpdate(values []gfdi.MusicEntityValue) {
+	if len(values) == 0 {
+		return
+	}
+	s.send(gfdi.MusicControlEntityUpdate(values))
 }

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Pulse
+Comment=Garmin watch companion
+Exec=./run.sh %U
+Icon=pulse.png
+Terminal=false
+Type=Application
+X-Lomiri-Touch=true

@@ -1,0 +1,473 @@
+Current Notification Manager state:
+  Notification List:
+    NotificationRecord(0x088cd077: pkg=android user=UserHandle{-1} id=2147483647 tag=ranker_group importance=1 key=-1|android|2147483647|ranker_group|1000|ranker_group: Notification(channel=USB shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x702 color=0x00000000 groupKey=ranker_group vis=PRIVATE))
+      uid=1000 userId=-1
+      opPkg=android
+      icon=Icon(typ=RESOURCE pkg=android id=0x01080844)
+      flags=0x702
+      originalFlags=0x702
+      pri=0
+      key=-1|android|2147483647|ranker_group|1000|ranker_group
+      seen=true
+      groupKey=-1|android|g:ranker_group
+      notification=
+            fullscreenIntent=null
+            contentIntent=null
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=2
+            when=1788278940385
+            tickerText=null
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            extras={
+                android.reduced.images=Boolean (true)
+                android.appInfo=ApplicationInfo (ApplicationInfo{e8334e4 android})
+            }
+      publicNotification=
+            None
+      stats=SingleNotificationStats{posttimeElapsedMs=17037942, posttimeToFirstClickMs=-1, posttimeToDismissMs=-1, airtimeCount=2, airtimeMs=20295, currentAirtimeStartElapsedMs=-1, airtimeExpandedMs=0, posttimeToFirstVisibleExpansionMs=-1, currentAirtimeExpandedStartElapsedMs=-1, requestedImportance=3, naturalImportance=1, isNoisy=true}
+      mContactAffinity=0.0
+      mRecentlyIntrusive=false
+      mPackagePriority=0
+      mPackageVisibility=-1000
+      mSystemImportance=UNSPECIFIED
+      mAsstImportance=UNSPECIFIED
+      mImportance=MIN
+      mImportanceExplanation=app
+      mProposedImportance=UNSPECIFIED
+      mIsAppImportanceLocked=false
+      mIntercept=false
+      mHidden==false
+      mGlobalSortKey=crtcl=0x0002:intrsv=1:grnk=0x0000:gsmry=0:nsk:rnk=0x0006
+      mRankingTimeMs=1788278940385
+      mCreationTimeMs=1788278940385
+      mVisibleSinceMs=1788283116863
+      mUpdateTimeMs=1788278940385
+      mInterruptionTimeMs=1788278940385
+      mSuppressedVisualEffects= 0
+      mSound= content://settings/system/notification_sound
+      mVibration= null
+      mAttributes= AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null
+      mLight= null
+      mShowBadge=false
+      mColorized=false
+      mAllowBubble=false
+      isBubble=false
+      mIsInterruptive=false
+      effectiveNotificationChannel=NotificationChannel{mId='USB', mName=USB connection, mDescription=, mImportance=1, mBypassDnd=false, mLockscreenVisibility=-1000, mSound=content://settings/system/notification_sound, mLights=false, mLightColor=0, mVibration=null, mUserLockedFields=0, mFgServiceShown=false, mVibrationEnabled=false, mShowBadge=true, mDeleted=false, mDeletedTimeMs=-1, mGroup='null', mAudioAttributes=AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null, mBlockableSystem=false, mAllowBubbles=-1, mImportanceLockedDefaultApp=true, mOriginalImp=1, mParent=null, mConversationId=null, mDemoted=false, mImportantConvo=false}
+      mAdjustments=[]
+      shortcut=null found valid? false
+    NotificationRecord(0x04532d4d: pkg=android user=UserHandle{-1} id=26 tag=null importance=4 key=-1|android|26|null|1000: Notification(channel=DEVELOPER_IMPORTANT shortcut=null contentView=null vibrate=null sound=null tick defaults=0x0 flags=0x802 color=0x00000000 vis=PUBLIC))
+      uid=1000 userId=-1
+      opPkg=android
+      icon=Icon(typ=RESOURCE pkg=android id=0x01080825)
+      flags=0x802
+      originalFlags=0x802
+      pri=0
+      key=-1|android|26|null|1000
+      seen=true
+      groupKey=-1|android|g:ranker_group
+      notification=
+            fullscreenIntent=null
+            contentIntent=PendingIntent{5c5f002: PendingIntentRecord{49ce1fe android startActivity}}
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=0
+            when=0
+            tickerText=USB debugging connected
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            extras={
+                android.title=String (USB debugging connected)
+                android.reduced.images=Boolean (true)
+                android.text=String (Tap to turn off USB debugging)
+                android.appInfo=ApplicationInfo (ApplicationInfo{7f3fd13 android})
+                android.tv.EXTENSIONS=Bundle (Bundle[{channel_id=usbdevicemanager.adb.tv, suppressShowOverApps=false, flags=1}])
+            }
+      publicNotification=
+            None
+      stats=SingleNotificationStats{posttimeElapsedMs=17037730, posttimeToFirstClickMs=-1, posttimeToDismissMs=-1, airtimeCount=5, airtimeMs=36869, currentAirtimeStartElapsedMs=-1, airtimeExpandedMs=5234, posttimeToFirstVisibleExpansionMs=582, currentAirtimeExpandedStartElapsedMs=-1, requestedImportance=3, naturalImportance=4, isNoisy=true}
+      mContactAffinity=0.0
+      mRecentlyIntrusive=false
+      mPackagePriority=0
+      mPackageVisibility=-1000
+      mSystemImportance=UNSPECIFIED
+      mAsstImportance=UNSPECIFIED
+      mImportance=HIGH
+      mImportanceExplanation=app
+      mProposedImportance=UNSPECIFIED
+      mIsAppImportanceLocked=false
+      mIntercept=false
+      mHidden==false
+      mGlobalSortKey=crtcl=0x0002:intrsv=1:grnk=0x0000:gsmry=1:nsk:rnk=0x0000
+      mRankingTimeMs=1788278940175
+      mCreationTimeMs=1788278940175
+      mVisibleSinceMs=1788283116358
+      mUpdateTimeMs=1788278940175
+      mInterruptionTimeMs=1788283116358
+      mSuppressedVisualEffects= 0
+      mSound= content://settings/system/notification_sound
+      mVibration= null
+      mAttributes= AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null
+      mLight= null
+      mShowBadge=false
+      mColorized=false
+      mAllowBubble=false
+      isBubble=false
+      mIsInterruptive=true
+      effectiveNotificationChannel=NotificationChannel{mId='DEVELOPER_IMPORTANT', mName=Important developer messages, mDescription=, mImportance=4, mBypassDnd=false, mLockscreenVisibility=-1000, mSound=content://settings/system/notification_sound, mLights=false, mLightColor=0, mVibration=null, mUserLockedFields=0, mFgServiceShown=false, mVibrationEnabled=false, mShowBadge=true, mDeleted=false, mDeletedTimeMs=-1, mGroup='null', mAudioAttributes=AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null, mBlockableSystem=false, mAllowBubbles=-1, mImportanceLockedDefaultApp=true, mOriginalImp=4, mParent=null, mConversationId=null, mDemoted=false, mImportantConvo=false}
+      mAdjustments=[]
+      shortcut=null found valid? false
+    NotificationRecord(0x09b0bb50: pkg=android user=UserHandle{-1} id=32 tag=null importance=1 key=-1|android|32|null|1000: Notification(channel=USB shortcut=null contentView=null vibrate=null sound=null tick defaults=0x0 flags=0x802 color=0x00000000 vis=PUBLIC))
+      uid=1000 userId=-1
+      opPkg=android
+      icon=Icon(typ=RESOURCE pkg=android id=0x01080844)
+      flags=0x802
+      originalFlags=0x802
+      pri=0
+      key=-1|android|32|null|1000
+      seen=true
+      groupKey=-1|android|g:ranker_group
+      notification=
+            fullscreenIntent=null
+            contentIntent=PendingIntent{9325149: PendingIntentRecord{65ef9b9 android startActivity}}
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=0
+            when=0
+            tickerText=Charging this device via USB
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            extras={
+                android.title=String (Charging this device via USB)
+                android.reduced.images=Boolean (true)
+                android.subText=String (TQ3A.230901.001)
+                android.text=String (Tap for more options.)
+                android.appInfo=ApplicationInfo (ApplicationInfo{e8334e4 android})
+            }
+      publicNotification=
+            None
+      stats=SingleNotificationStats{posttimeElapsedMs=17037724, posttimeToFirstClickMs=-1, posttimeToDismissMs=-1, airtimeCount=2, airtimeMs=20293, currentAirtimeStartElapsedMs=-1, airtimeExpandedMs=0, posttimeToFirstVisibleExpansionMs=-1, currentAirtimeExpandedStartElapsedMs=-1, requestedImportance=3, naturalImportance=1, isNoisy=true}
+      mContactAffinity=0.0
+      mRecentlyIntrusive=false
+      mPackagePriority=0
+      mPackageVisibility=-1000
+      mSystemImportance=UNSPECIFIED
+      mAsstImportance=UNSPECIFIED
+      mImportance=MIN
+      mImportanceExplanation=app
+      mProposedImportance=UNSPECIFIED
+      mIsAppImportanceLocked=false
+      mIntercept=false
+      mHidden==false
+      mGlobalSortKey=crtcl=0x0002:intrsv=1:grnk=0x0000:gsmry=1:nsk:rnk=0x0005
+      mRankingTimeMs=1788278940169
+      mCreationTimeMs=1788278940169
+      mVisibleSinceMs=1788283116865
+      mUpdateTimeMs=1788278940169
+      mInterruptionTimeMs=1788283116866
+      mSuppressedVisualEffects= 0
+      mSound= content://settings/system/notification_sound
+      mVibration= null
+      mAttributes= AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null
+      mLight= null
+      mShowBadge=false
+      mColorized=false
+      mAllowBubble=false
+      isBubble=false
+      mIsInterruptive=true
+      effectiveNotificationChannel=NotificationChannel{mId='USB', mName=USB connection, mDescription=, mImportance=1, mBypassDnd=false, mLockscreenVisibility=-1000, mSound=content://settings/system/notification_sound, mLights=false, mLightColor=0, mVibration=null, mUserLockedFields=0, mFgServiceShown=false, mVibrationEnabled=false, mShowBadge=true, mDeleted=false, mDeletedTimeMs=-1, mGroup='null', mAudioAttributes=AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null, mBlockableSystem=false, mAllowBubbles=-1, mImportanceLockedDefaultApp=true, mOriginalImp=1, mParent=null, mConversationId=null, mDemoted=false, mImportantConvo=false}
+      mAdjustments=[]
+      shortcut=null found valid? false
+    NotificationRecord(0x01a55ff3: pkg=com.android.shell user=UserHandle{0} id=2147483647 tag=ranker_group importance=3 key=0|com.android.shell|2147483647|ranker_group|2000|ranker_group: Notification(channel=shell_cmd shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x700 color=0x00000000 groupKey=ranker_group vis=PRIVATE))
+      uid=2000 userId=0
+      opPkg=com.android.shell
+      icon=Icon(typ=RESOURCE pkg=android id=0x01080077)
+      flags=0x700
+      originalFlags=0x700
+      pri=0
+      key=0|com.android.shell|2147483647|ranker_group|2000|ranker_group
+      seen=true
+      groupKey=0|com.android.shell|g:ranker_group
+      notification=
+            fullscreenIntent=null
+            contentIntent=null
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=2
+            when=1788283112514
+            tickerText=null
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            extras={
+                android.reduced.images=Boolean (true)
+                android.appInfo=ApplicationInfo (ApplicationInfo{424259f com.android.shell})
+            }
+      publicNotification=
+            None
+      stats=SingleNotificationStats{posttimeElapsedMs=21210070, posttimeToFirstClickMs=-1, posttimeToDismissMs=-1, airtimeCount=1, airtimeMs=13027, currentAirtimeStartElapsedMs=-1, airtimeExpandedMs=6344, posttimeToFirstVisibleExpansionMs=10830, currentAirtimeExpandedStartElapsedMs=-1, requestedImportance=3, naturalImportance=3, isNoisy=true}
+      mContactAffinity=0.0
+      mRecentlyIntrusive=false
+      mPackagePriority=0
+      mPackageVisibility=-1000
+      mSystemImportance=UNSPECIFIED
+      mAsstImportance=UNSPECIFIED
+      mImportance=DEFAULT
+      mImportanceExplanation=app
+      mProposedImportance=UNSPECIFIED
+      mIsAppImportanceLocked=false
+      mIntercept=false
+      mHidden==false
+      mGlobalSortKey=crtcl=0x0002:intrsv=1:grnk=0x0001:gsmry=0:nsk:rnk=0x0003
+      mRankingTimeMs=1788283112514
+      mCreationTimeMs=1788283112514
+      mVisibleSinceMs=1788283116862
+      mUpdateTimeMs=1788283112514
+      mInterruptionTimeMs=1788283112514
+      mSuppressedVisualEffects= 0
+      mSound= content://settings/system/notification_sound
+      mVibration= null
+      mAttributes= AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null
+      mLight= null
+      mShowBadge=true
+      mColorized=false
+      mAllowBubble=false
+      isBubble=false
+      mIsInterruptive=false
+      effectiveNotificationChannel=NotificationChannel{mId='shell_cmd', mName=Shell command, mDescription=, mImportance=3, mBypassDnd=false, mLockscreenVisibility=-1000, mSound=content://settings/system/notification_sound, mLights=false, mLightColor=0, mVibration=null, mUserLockedFields=0, mFgServiceShown=false, mVibrationEnabled=false, mShowBadge=true, mDeleted=false, mDeletedTimeMs=-1, mGroup='null', mAudioAttributes=AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null, mBlockableSystem=false, mAllowBubbles=-1, mImportanceLockedDefaultApp=true, mOriginalImp=3, mParent=null, mConversationId=null, mDemoted=false, mImportantConvo=false}
+      mAdjustments=[]
+      shortcut=null found valid? false
+    NotificationRecord(0x0f9814b0: pkg=com.android.shell user=UserHandle{0} id=2020 tag=mtag importance=3 key=0|com.android.shell|2020|mtag|2000: Notification(channel=shell_cmd shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x0 color=0x00000000 vis=PRIVATE))
+      uid=2000 userId=0
+      opPkg=com.android.shell
+      icon=Icon(typ=RESOURCE pkg=android id=0x01080077)
+      flags=0x0
+      originalFlags=0x0
+      pri=0
+      key=0|com.android.shell|2020|mtag|2000
+      seen=true
+      groupKey=0|com.android.shell|g:ranker_group
+      notification=
+            fullscreenIntent=null
+            contentIntent=null
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=0
+            when=1788283112306
+            tickerText=null
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            extras={
+                android.title=String (Multi)
+                android.reduced.images=Boolean (true)
+                android.template=String (android.app.Notification$BigTextStyle)
+                android.text=String (line one
+line two (paren) here)
+                android.appInfo=ApplicationInfo (ApplicationInfo{a2e9f29 com.android.shell})
+                android.bigText=null
+            }
+      publicNotification=
+            None
+      stats=SingleNotificationStats{posttimeElapsedMs=21209863, posttimeToFirstClickMs=-1, posttimeToDismissMs=-1, airtimeCount=1, airtimeMs=13534, currentAirtimeStartElapsedMs=-1, airtimeExpandedMs=5330, posttimeToFirstVisibleExpansionMs=12053, currentAirtimeExpandedStartElapsedMs=-1, requestedImportance=3, naturalImportance=3, isNoisy=true}
+      mContactAffinity=0.0
+      mRecentlyIntrusive=false
+      mPackagePriority=0
+      mPackageVisibility=-1000
+      mSystemImportance=UNSPECIFIED
+      mAsstImportance=UNSPECIFIED
+      mImportance=DEFAULT
+      mImportanceExplanation=app
+      mProposedImportance=UNSPECIFIED
+      mIsAppImportanceLocked=false
+      mIntercept=false
+      mHidden==false
+      mGlobalSortKey=crtcl=0x0002:intrsv=1:grnk=0x0001:gsmry=1:nsk:rnk=0x0001
+      mRankingTimeMs=1788283112306
+      mCreationTimeMs=1788283112306
+      mVisibleSinceMs=1788283116358
+      mUpdateTimeMs=1788283112306
+      mInterruptionTimeMs=1788283116358
+      mSuppressedVisualEffects= 0
+      mSound= content://settings/system/notification_sound
+      mVibration= null
+      mAttributes= AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null
+      mLight= null
+      mShowBadge=true
+      mColorized=false
+      mAllowBubble=false
+      isBubble=false
+      mIsInterruptive=true
+      effectiveNotificationChannel=NotificationChannel{mId='shell_cmd', mName=Shell command, mDescription=, mImportance=3, mBypassDnd=false, mLockscreenVisibility=-1000, mSound=content://settings/system/notification_sound, mLights=false, mLightColor=0, mVibration=null, mUserLockedFields=0, mFgServiceShown=false, mVibrationEnabled=false, mShowBadge=true, mDeleted=false, mDeletedTimeMs=-1, mGroup='null', mAudioAttributes=AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null, mBlockableSystem=false, mAllowBubbles=-1, mImportanceLockedDefaultApp=true, mOriginalImp=3, mParent=null, mConversationId=null, mDemoted=false, mImportantConvo=false}
+      mAdjustments=[]
+      shortcut=null found valid? false
+    NotificationRecord(0x0f2a733e: pkg=com.android.shell user=UserHandle{0} id=2020 tag=tag importance=3 key=0|com.android.shell|2020|tag|2000: Notification(channel=shell_cmd shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x0 color=0x00000000 vis=PRIVATE))
+      uid=2000 userId=0
+      opPkg=com.android.shell
+      icon=Icon(typ=RESOURCE pkg=android id=0x01080077)
+      flags=0x0
+      originalFlags=0x0
+      pri=0
+      key=0|com.android.shell|2020|tag|2000
+      seen=true
+      groupKey=0|com.android.shell|g:ranker_group
+      notification=
+            fullscreenIntent=null
+            contentIntent=null
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=0
+            when=1788283082125
+            tickerText=null
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            extras={
+                android.title=String (Pulse test)
+                android.reduced.images=Boolean (true)
+                android.template=String (android.app.Notification$BigTextStyle)
+                android.text=String (hello from waydroid)
+                android.appInfo=ApplicationInfo (ApplicationInfo{424259f com.android.shell})
+                android.bigText=null
+            }
+      publicNotification=
+            None
+      stats=SingleNotificationStats{posttimeElapsedMs=21179682, posttimeToFirstClickMs=-1, posttimeToDismissMs=-1, airtimeCount=2, airtimeMs=20292, currentAirtimeStartElapsedMs=-1, airtimeExpandedMs=3180, posttimeToFirstVisibleExpansionMs=44383, currentAirtimeExpandedStartElapsedMs=-1, requestedImportance=3, naturalImportance=3, isNoisy=true}
+      mContactAffinity=0.0
+      mRecentlyIntrusive=false
+      mPackagePriority=0
+      mPackageVisibility=-1000
+      mSystemImportance=UNSPECIFIED
+      mAsstImportance=UNSPECIFIED
+      mImportance=DEFAULT
+      mImportanceExplanation=app
+      mProposedImportance=UNSPECIFIED
+      mIsAppImportanceLocked=false
+      mIntercept=false
+      mHidden==false
+      mGlobalSortKey=crtcl=0x0002:intrsv=1:grnk=0x0001:gsmry=1:nsk:rnk=0x0002
+      mRankingTimeMs=1788283082125
+      mCreationTimeMs=1788283082127
+      mVisibleSinceMs=1788283116865
+      mUpdateTimeMs=1788283082127
+      mInterruptionTimeMs=1788283116865
+      mSuppressedVisualEffects= 0
+      mSound= content://settings/system/notification_sound
+      mVibration= null
+      mAttributes= AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null
+      mLight= null
+      mShowBadge=true
+      mColorized=false
+      mAllowBubble=false
+      isBubble=false
+      mIsInterruptive=true
+      effectiveNotificationChannel=NotificationChannel{mId='shell_cmd', mName=Shell command, mDescription=, mImportance=3, mBypassDnd=false, mLockscreenVisibility=-1000, mSound=content://settings/system/notification_sound, mLights=false, mLightColor=0, mVibration=null, mUserLockedFields=0, mFgServiceShown=false, mVibrationEnabled=false, mShowBadge=true, mDeleted=false, mDeletedTimeMs=-1, mGroup='null', mAudioAttributes=AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null, mBlockableSystem=false, mAllowBubbles=-1, mImportanceLockedDefaultApp=true, mOriginalImp=3, mParent=null, mConversationId=null, mDemoted=false, mImportantConvo=false}
+      mAdjustments=[]
+      shortcut=null found valid? false
+    NotificationRecord(0x06a70a4e: pkg=ru.yandex.music user=UserHandle{0} id=10501 tag=null importance=2 key=0|ru.yandex.music|10501|null|10135: Notification(channel=ru.yandex.music.notifications.player shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x8 color=0x00000000 category=transport groupKey=media3_group_key actions=5 vis=PUBLIC))
+      uid=10135 userId=0
+      opPkg=ru.yandex.music
+      icon=Icon(typ=RESOURCE pkg=ru.yandex.music id=0x7f080573)
+      flags=0x8
+      originalFlags=0x8
+      pri=0
+      key=0|ru.yandex.music|10501|null|10135
+      seen=false
+      groupKey=0|ru.yandex.music|g:media3_group_key
+      notification=
+            fullscreenIntent=null
+            contentIntent=PendingIntent{97576f: PendingIntentRecord{2293cf4 ru.yandex.music startActivity (allowlist: 6173460:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+            deleteIntent=PendingIntent{bee3c7c: PendingIntentRecord{604aec7 ru.yandex.music startService (allowlist: 6173460:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+            number=0
+            groupAlertBehavior=0
+            when=0
+            tickerText=null
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            actions={
+                [0] "Dislike Not selected" -> PendingIntent{ec5b905: PendingIntentRecord{768c295 ru.yandex.music startService (allowlist: 6173460:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+                [1] "Seek to previous item" -> PendingIntent{76d7d5a: PendingIntentRecord{fd8de92 ru.yandex.music startService (allowlist: 6173460:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+                [2] "Play" -> PendingIntent{36bfb8b: PendingIntentRecord{a137063 ru.yandex.music startForegroundService (allowlist: 6173460:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+                [3] "Seek to next item" -> PendingIntent{420a468: PendingIntentRecord{4d97c1d ru.yandex.music startService (allowlist: 6173460:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+                [4] "Like Selected" -> PendingIntent{46de081: PendingIntentRecord{718324c ru.yandex.music startService (allowlist: 6173460:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+              }
+            extras={
+                android.title=String (Attack)
+                android.reduced.images=Boolean (true)
+                android.subText=null
+                android.template=String (android.app.Notification$MediaStyle)
+                android.showChronometer=Boolean (false)
+                androidx.media3.session=Bundle (Bundle[mParcelledData.dataSize=380])
+                android.text=String (Thirty Seconds to Mars)
+                android.progress=Integer (0)
+                android.progressMax=Integer (0)
+                android.appInfo=ApplicationInfo (ApplicationInfo{1f61526 ru.yandex.music})
+                android.showWhen=Boolean (false)
+                android.largeIcon=Icon (Icon(typ=BITMAP size=126x126))
+                android.infoText=null
+                android.mediaSession=Token (android.media.session.MediaSession$Token@1a190b0)
+                android.progressIndeterminate=Boolean (false)
+                android.remoteInputHistory=null
+                android.compactActions=int[] (3)
+                  [0] 1
+                  [1] 2
+                  [2] 3
+            }
+      publicNotification=
+            None
+      stats=SingleNotificationStats{posttimeElapsedMs=12827424, posttimeToFirstClickMs=-1, posttimeToDismissMs=-1, airtimeCount=0, airtimeMs=0, currentAirtimeStartElapsedMs=-1, airtimeExpandedMs=0, posttimeToFirstVisibleExpansionMs=-1, currentAirtimeExpandedStartElapsedMs=-1, requestedImportance=3, naturalImportance=2, isNoisy=true}
+      mContactAffinity=0.0
+      mRecentlyIntrusive=false
+      mPackagePriority=0
+      mPackageVisibility=-1000
+      mSystemImportance=UNSPECIFIED
+      mAsstImportance=UNSPECIFIED
+      mImportance=LOW
+      mImportanceExplanation=app
+      mProposedImportance=UNSPECIFIED
+      mIsAppImportanceLocked=true
+      mIntercept=false
+      mHidden==false
+      mGlobalSortKey=crtcl=0x0002:intrsv=1:grnk=0x0004:gsmry=1:nsk:rnk=0x0004
+      mRankingTimeMs=1788274747593
+      mCreationTimeMs=1788274729859
+      mVisibleSinceMs=0
+      mUpdateTimeMs=1788274923309
+      mInterruptionTimeMs=1788274923309
+      mSuppressedVisualEffects= 0
+      mSound= content://settings/system/notification_sound
+      mVibration= null
+      mAttributes= AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null
+      mLight= null
+      mShowBadge=false
+      mColorized=false
+      mAllowBubble=false
+      isBubble=false
+      mIsInterruptive=false
+      effectiveNotificationChannel=NotificationChannel{mId='ru.yandex.music.notifications.player', mName=Player widget, mDescription=, mImportance=2, mBypassDnd=false, mLockscreenVisibility=-1000, mSound=content://settings/system/notification_sound, mLights=false, mLightColor=0, mVibration=null, mUserLockedFields=0, mFgServiceShown=true, mVibrationEnabled=false, mShowBadge=false, mDeleted=false, mDeletedTimeMs=-1, mGroup='null', mAudioAttributes=AudioAttributes: usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x800 tags= bundle=null, mBlockableSystem=false, mAllowBubbles=-1, mImportanceLockedDefaultApp=false, mOriginalImp=2, mParent=null, mConversationId=null, mDemoted=false, mImportantConvo=false}
+      mAdjustments=[]
+      shortcut=null found valid? false
+  
+  mUseAttentionLight=false
+  mHasLight=false
+  mNotificationPulseEnabled=true

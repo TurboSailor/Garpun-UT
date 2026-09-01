@@ -1,0 +1,15 @@
+{
+    "name": "cc.zachy.pulse",
+    "version": "0.1.0",
+    "architecture": "arm64",
+    "framework": "ubuntu-sdk-20.04",
+    "maintainer": "Pulse <pulse@localhost>",
+    "title": "Pulse",
+    "description": "Garmin watch companion: sync, health metrics, sleep and workouts",
+    "hooks": {
+        "pulse": {
+            "apparmor": "pulse.apparmor",
+            "desktop": "pulse.desktop"
+        }
+    }
+}

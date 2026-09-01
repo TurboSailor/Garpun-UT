@@ -1,0 +1,9 @@
+{
+    "template": "unconfined",
+    "policy_groups": [
+        "networking",
+        "bluetooth",
+        "location"
+    ],
+    "policy_version": 20.04
+}
