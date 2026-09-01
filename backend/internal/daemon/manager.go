@@ -734,18 +734,26 @@ func (m *Manager) notificationLoop() {
 			}
 			m.events.Publish("notification", n.Content)
 			if !m.settingBool("notificationsEnabled", true) {
+				m.log.Debug("daemon: notification dropped, forwarding disabled",
+					"id", n.Content.ID, "app", n.Content.AppIdentifier)
 				continue
 			}
 			m.mu.Lock()
 			sess := m.session
 			m.mu.Unlock()
 			if sess == nil || !sess.Initialized() {
+				m.log.Debug("daemon: notification dropped, no watch session",
+					"id", n.Content.ID, "app", n.Content.AppIdentifier)
 				continue
 			}
 			if n.Removed {
 				sess.RemoveNotification(n.Content.ID, n.Content.Category)
+				m.log.Info("daemon: notification removed on watch",
+					"id", n.Content.ID, "app", n.Content.AppIdentifier)
 			} else {
 				sess.SendNotification(n.Content)
+				m.log.Info("daemon: notification sent to watch",
+					"id", n.Content.ID, "app", n.Content.AppIdentifier, "title", n.Content.Title)
 			}
 		}
 	}
