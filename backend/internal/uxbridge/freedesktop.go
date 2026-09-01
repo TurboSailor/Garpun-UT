@@ -151,7 +151,7 @@ func (b *Bridge) onFreedesktopMessage(msg *dbus.Message) {
 	if member, _ := msg.Headers[dbus.FieldMember].Value().(string); member != "Notify" {
 		return
 	}
-	n, ok := parseNotifyCall(msg.Body)
+	n, overlay, ok := parseNotifyCall(msg.Body)
 	if !ok {
 		return
 	}
@@ -164,14 +164,10 @@ func (b *Bridge) onFreedesktopMessage(msg *dbus.Message) {
 	}
 	// Volume and brightness bars arrive here too; they are screen furniture,
 	// not something to buzz a wrist for.
-	if len(msg.Body) >= 7 {
-		if hints, ok := msg.Body[6].(map[string]dbus.Variant); ok {
-			if marker, overlay := isSystemOverlay(hints); overlay {
-				b.log.Debug("uxbridge: ignoring system overlay",
-					"app", n.AppName, "title", n.Title, "hint", marker)
-				return
-			}
-		}
+	if overlay != "" {
+		b.log.Debug("uxbridge: ignoring system overlay",
+			"app", n.AppName, "title", n.Title, "hint", overlay)
+		return
 	}
 	n.ID = b.idFor("fd:" + strconv.FormatUint(fdSeq.Add(1), 10))
 	b.emit(n)
@@ -180,21 +176,27 @@ func (b *Bridge) onFreedesktopMessage(msg *dbus.Message) {
 // parseNotifyCall decodes the Notify argument list:
 // app_name s, replaces_id u, app_icon s, summary s, body s, actions as,
 // hints a{sv}, expire_timeout i.
-func parseNotifyCall(body []any) (Notification, bool) {
+// The second return value names the hint that marks this call as a system
+// overlay, or is empty for a real notification.
+func parseNotifyCall(body []any) (Notification, string, bool) {
 	if len(body) < 5 {
-		return Notification{}, false
+		return Notification{}, "", false
 	}
 	appName, _ := body[0].(string)
 	summary, _ := body[3].(string)
 	text, _ := body[4].(string)
 	if summary == "" && text == "" {
-		return Notification{}, false
+		return Notification{}, "", false
 	}
 
 	appID := appName
 	category := ""
+	overlay := ""
 	if len(body) >= 7 {
 		if hints, ok := body[6].(map[string]dbus.Variant); ok {
+			if marker, isOverlay := isSystemOverlay(hints); isOverlay {
+				overlay = marker
+			}
 			if v, ok := hints["desktop-entry"]; ok {
 				if s, ok := v.Value().(string); ok && s != "" {
 					appID = s
@@ -214,5 +216,5 @@ func parseNotifyCall(body []any) (Notification, bool) {
 		Body:     text,
 		Category: categoryFor(appID, appName+" "+category),
 	}
-	return n, true
+	return n, overlay, true
 }

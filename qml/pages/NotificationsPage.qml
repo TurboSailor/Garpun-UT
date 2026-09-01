@@ -163,9 +163,10 @@ Item {
                             spacing: Pulse.xs
 
                             Label {
-                                text: modelData.appName && modelData.appName.length
-                                      ? modelData.appName
-                                      : (modelData.appId || modelData.source)
+                                text: !modelData ? ""
+                                      : (modelData.appName && modelData.appName.length
+                                         ? modelData.appName
+                                         : (modelData.appId || modelData.source || ""))
                                 color: Pulse.textDim
                                 font.family: Pulse.face
                                 font.pixelSize: Pulse.micro
@@ -173,13 +174,13 @@ Item {
                                 font.letterSpacing: units.dp(0.8)
                             }
                             Label {
-                                text: "\u00b7 " + Fmt.relative(modelData.tsMs)
+                                text: modelData ? "\u00b7 " + Fmt.relative(modelData.tsMs) : ""
                                 color: Pulse.textDim
                                 font.family: Pulse.face
                                 font.pixelSize: Pulse.micro
                             }
                             Label {
-                                visible: modelData.removed
+                                visible: !!modelData && !!modelData.removed
                                 text: I18n.isRu() ? "\u00b7 закрыто" : "\u00b7 dismissed"
                                 color: Pulse.ringCal
                                 font.family: Pulse.face

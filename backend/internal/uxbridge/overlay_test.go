@@ -95,3 +95,41 @@ func TestTruthyReadsNumericHints(t *testing.T) {
 		}
 	}
 }
+
+// parseNotifyCall is the single place hints are read, so the overlay marker
+// has to survive the trip out of it.
+func TestParseNotifyCallReportsOverlay(t *testing.T) {
+	volume := []any{
+		"ayatana-indicator-sound", uint32(0), "audio-volume-medium",
+		"Громкость", "", []string{},
+		map[string]dbus.Variant{
+			// Exactly what the device sends on a volume key press.
+			"x-lomiri-private-synchronous": dbus.MakeVariant("volume"),
+			"value":                        dbus.MakeVariant(int32(55)),
+		},
+		int32(-1),
+	}
+	n, overlay, ok := parseNotifyCall(volume)
+	if !ok {
+		t.Fatal("expected the call to parse")
+	}
+	if overlay == "" {
+		t.Errorf("volume OSD not reported as an overlay (app %q)", n.AppName)
+	}
+
+	message := []any{
+		"Telegram", uint32(0), "", "Иван", "Привет", []string{},
+		map[string]dbus.Variant{"desktop-entry": dbus.MakeVariant("telegram")},
+		int32(-1),
+	}
+	n, overlay, ok = parseNotifyCall(message)
+	if !ok {
+		t.Fatal("expected the call to parse")
+	}
+	if overlay != "" {
+		t.Errorf("real message wrongly marked as overlay via %q", overlay)
+	}
+	if n.Source != SourceFreedesktop || n.Title != "Иван" {
+		t.Errorf("unexpected content: %+v", n)
+	}
+}

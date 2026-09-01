@@ -1,5 +1,4 @@
 import QtQuick 2.12
-import QtQuick.Shapes 1.12
 import Ubuntu.Components 1.3
 import "../theme"
 
@@ -142,19 +141,34 @@ Item {
         return "";
     }
 
-    Shape {
+    // QtQuick.Shapes draws nothing inside Ubuntu.Components' MainView on this
+    // platform — verified on device: the identical ShapePath renders standalone
+    // and stays blank under MainView, which is why every icon was missing. The
+    // svg image plugin handles the same path data, so the marks above are used
+    // verbatim and only the rasteriser changes.
+    Image {
         anchors.fill: parent
-        antialiasing: true
         visible: root.path.length > 0
-        transform: Scale { xScale: root.size / 24; yScale: root.size / 24 }
+        smooth: true
+        // Rasterise at device pixels so the stroke stays crisp.
+        sourceSize.width: Math.max(1, Math.round(root.size))
+        sourceSize.height: Math.max(1, Math.round(root.size))
+        source: root.path.length > 0 ? root.svgSource : ""
+    }
 
-        ShapePath {
-            strokeColor: root.color
-            strokeWidth: root.weight
-            fillColor: "transparent"
-            capStyle: ShapePath.RoundCap
-            joinStyle: ShapePath.RoundJoin
-            PathSvg { path: root.path }
-        }
+    readonly property string svgSource:
+        "data:image/svg+xml;utf8," +
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
+        '<path d="' + path + '" fill="none"' +
+        ' stroke="' + rgbOf(color) + '" stroke-opacity="' + color.a.toFixed(3) + '"' +
+        ' stroke-width="' + weight + '"' +
+        ' stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
+    // Qt stringifies a color as #aarrggbb, which SVG does not understand, so
+    // the channels are written out and the alpha travels as stroke-opacity.
+    function rgbOf(c) {
+        return "rgb(" + Math.round(c.r * 255) + "," +
+                        Math.round(c.g * 255) + "," +
+                        Math.round(c.b * 255) + ")";
     }
 }

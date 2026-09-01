@@ -43,7 +43,7 @@ Item {
         for (var i = 0; i < s.trend.length; i++) {
             var d = s.trend[i];
             out.push({
-                label: Fmt.DAYS_SHORT[Fmt.parseIso(d.date).getDay()],
+                label: Fmt.daysShort()[Fmt.parseIso(d.date).getDay()],
                 value: d.minutes || 0,
                 tint: d.score > 0 ? Pulse.sleepColor(d.score) : Pulse.purple
             });
