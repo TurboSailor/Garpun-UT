@@ -91,6 +91,56 @@ func isSelfNotification(id string) bool {
 	return strings.HasPrefix(id, selfPackage+"_")
 }
 
+// Lomiri renders two very different things through this one interface: entries
+// that land in the notification list, and transient on-screen overlays such as
+// the volume and brightness bars. Only the first kind belongs on a watch.
+//
+// The overlays are marked by hints inherited from Unity. The "synchronous"
+// ones replace each other in place instead of stacking, which is exactly what
+// a volume bar does; "icon-only" and "transient" say outright that there is
+// nothing worth keeping.
+var osdHints = []string{
+	"x-lomiri-private-synchronous",
+	"x-canonical-private-synchronous",
+	"x-lomiri-private-icon-only",
+	"x-canonical-private-icon-only",
+	"x-lomiri-non-shaped-icon",
+	"x-canonical-non-shaped-icon",
+}
+
+// isSystemOverlay reports whether these hints describe an on-screen overlay
+// rather than a real notification. It also names the marker, for logging.
+func isSystemOverlay(hints map[string]dbus.Variant) (string, bool) {
+	for _, h := range osdHints {
+		if _, ok := hints[h]; ok {
+			return h, true
+		}
+	}
+	if v, ok := hints["transient"]; ok && truthy(v) {
+		return "transient", true
+	}
+	// A bare progress reading with no text of its own is a bar, not a message.
+	if _, ok := hints["value"]; ok {
+		return "value", true
+	}
+	return "", false
+}
+
+// truthy reads a hint that may arrive as a bool or as a number.
+func truthy(v dbus.Variant) bool {
+	switch x := v.Value().(type) {
+	case bool:
+		return x
+	case uint8:
+		return x != 0
+	case int32:
+		return x != 0
+	case uint32:
+		return x != 0
+	}
+	return false
+}
+
 func (b *Bridge) onFreedesktopMessage(msg *dbus.Message) {
 	if msg.Type != dbus.TypeMethodCall {
 		return
@@ -111,6 +161,17 @@ func (b *Bridge) onFreedesktopMessage(msg *dbus.Message) {
 	// and once as "cc.zachy.pulse_pulse".
 	if isSelfNotification(n.AppID) || isSelfNotification(n.AppName) {
 		return
+	}
+	// Volume and brightness bars arrive here too; they are screen furniture,
+	// not something to buzz a wrist for.
+	if len(msg.Body) >= 7 {
+		if hints, ok := msg.Body[6].(map[string]dbus.Variant); ok {
+			if marker, overlay := isSystemOverlay(hints); overlay {
+				b.log.Debug("uxbridge: ignoring system overlay",
+					"app", n.AppName, "title", n.Title, "hint", marker)
+				return
+			}
+		}
 	}
 	n.ID = b.idFor("fd:" + strconv.FormatUint(fdSeq.Add(1), 10))
 	b.emit(n)
