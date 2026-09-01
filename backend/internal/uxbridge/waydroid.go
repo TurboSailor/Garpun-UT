@@ -106,11 +106,18 @@ func (b *Bridge) startWaydroid() {
 }
 
 func (b *Bridge) pollWaydroid() {
-	runner := b.pickWaydroidRunner()
+	// The container is not required to be up when we start, and it may go away
+	// and come back at any time: Waydroid is a session the user can stop. Keep
+	// looking for it instead of disabling Android notifications for good.
+	runner := b.waitForWaydroid()
 	if runner == nil {
 		return
 	}
-	defer runner.close()
+	defer func() {
+		if runner != nil {
+			runner.close()
+		}
+	}()
 	b.log.Info("uxbridge: watching waydroid notifications", "via", runner.name())
 
 	var (
@@ -121,6 +128,7 @@ func (b *Bridge) pollWaydroid() {
 	ticker := time.NewTicker(b.opts.WaydroidPollInterval)
 	defer ticker.Stop()
 
+	fails := 0
 	for {
 		out, err := runner.run(b.ctx, dumpsysCommand)
 		if err != nil {
@@ -133,12 +141,30 @@ func (b *Bridge) pollWaydroid() {
 				if next := b.privilegedRunner(); next != nil {
 					runner.close()
 					runner = next
+					fails = 0
 					b.log.Warn("uxbridge: adbd wants authentication, switching to waydroid shell")
 					continue
 				}
 			}
 			b.log.Debug("uxbridge: waydroid poll failed", "err", err)
+
+			// A stopped container fails every poll. Rather than spin against a
+			// dead transport, drop it and wait for Waydroid to come back; the
+			// baseline is re-primed so the returning notifications are not
+			// replayed onto the watch.
+			if fails++; fails >= waydroidFailsBeforeRedial {
+				b.log.Info("uxbridge: waydroid stopped responding, waiting for it to come back")
+				runner.close()
+				runner = b.waitForWaydroid()
+				if runner == nil {
+					return
+				}
+				b.log.Info("uxbridge: waydroid is back", "via", runner.name())
+				fails, primed, prev = 0, false, nil
+				resolved = map[string]bool{}
+			}
 		} else {
+			fails = 0
 			cur := snapshotNotifications(parseDumpsysNotifications(string(out)))
 			b.resolveAppNames(b.ctx, runner, unresolvedPackages(cur, resolved))
 			if primed {
@@ -160,6 +186,36 @@ func (b *Bridge) pollWaydroid() {
 	}
 }
 
+// waydroidFailsBeforeRedial is how many consecutive failed polls mean the
+// container is gone rather than merely busy.
+const waydroidFailsBeforeRedial = 3
+
+// waitForWaydroid blocks until the container answers, backing off between
+// attempts. It returns nil only when the bridge is shutting down.
+func (b *Bridge) waitForWaydroid() shellRunner {
+	const (
+		firstDelay = 2 * time.Second
+		maxDelay   = 30 * time.Second
+	)
+	delay := firstDelay
+	for {
+		if r := b.pickWaydroidRunner(); r != nil {
+			return r
+		}
+		select {
+		case <-b.ctx.Done():
+			return nil
+		case <-time.After(delay):
+		}
+		if delay < maxDelay {
+			delay *= 2
+			if delay > maxDelay {
+				delay = maxDelay
+			}
+		}
+	}
+}
+
 // pickWaydroidRunner prefers adbd (no root needed) and falls back to the
 // privileged waydroid CLI.
 func (b *Bridge) pickWaydroidRunner() shellRunner {
@@ -176,11 +232,12 @@ func (b *Bridge) pickWaydroidRunner() shellRunner {
 
 	next := b.privilegedRunner()
 	if next == nil {
-		b.log.Warn("uxbridge: waydroid unreachable and no privileged runner configured")
+		// Callers retry, so this must not shout on every attempt.
+		b.log.Debug("uxbridge: waydroid unreachable and no privileged runner configured")
 		return nil
 	}
 	if _, err := next.run(ctx, "true"); err != nil {
-		b.log.Warn("uxbridge: waydroid unreachable, android notifications disabled", "err", err)
+		b.log.Debug("uxbridge: waydroid unreachable", "err", err)
 		return nil
 	}
 	return next

@@ -3,6 +3,7 @@ package uxbridge
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync/atomic"
 
 	"github.com/godbus/dbus/v5"
@@ -72,6 +73,24 @@ func (b *Bridge) startFreedesktop() error {
 // own id is a return value we never see, so every Notify call gets a fresh id.
 var fdSeq atomic.Uint64
 
+// selfPackage is this application's click package. The shell addresses it by
+// several names depending on the path a notification took: the bare package,
+// package_hook, or package_hook_version.
+const selfPackage = "cc.zachy.pulse"
+
+// isSelfNotification reports whether an application identifier belongs to this
+// app, in any of the forms the shell may present.
+func isSelfNotification(id string) bool {
+	if id == "" {
+		return false
+	}
+	if id == "pulse" || id == selfPackage {
+		return true
+	}
+	// package_hook and package_hook_version.
+	return strings.HasPrefix(id, selfPackage+"_")
+}
+
 func (b *Bridge) onFreedesktopMessage(msg *dbus.Message) {
 	if msg.Type != dbus.TypeMethodCall {
 		return
@@ -86,8 +105,11 @@ func (b *Bridge) onFreedesktopMessage(msg *dbus.Message) {
 	if !ok {
 		return
 	}
-	// Our own outgoing notifications would loop straight back in.
-	if n.AppID == "pulse" || n.AppID == "cc.zachy.pulse" {
+	// Our own notifications must not loop back in. Anything relayed through
+	// the push service is redelivered here attributed to this click package,
+	// so it would reach the watch twice: once with the real Android app name
+	// and once as "cc.zachy.pulse_pulse".
+	if isSelfNotification(n.AppID) || isSelfNotification(n.AppName) {
 		return
 	}
 	n.ID = b.idFor("fd:" + strconv.FormatUint(fdSeq.Add(1), 10))

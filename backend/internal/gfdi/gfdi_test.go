@@ -284,10 +284,10 @@ func TestNotificationUpdateLayout(t *testing.T) {
 	}
 
 	want := []byte{
-		NotifUpdateAdd, // update type
-		0x02,           // category flags
-		CategorySMS,    // category
-		0x03,           // count
+		NotifUpdateAdd,         // update type
+		0x02,                   // category flags
+		CategorySMS,            // category
+		0x03,                   // count
 		0x04, 0x03, 0x02, 0x01, // id, little endian
 		0x02, // phone flags
 	}
