@@ -1,2 +1,0 @@
-• iGPSPORT: Fix activity track reprocessing
-• Fix sleep time mismatch on some devices

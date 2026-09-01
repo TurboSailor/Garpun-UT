@@ -14,3 +14,6 @@ pulse-main/*/build/
 .DS_Store
 *.swp
 .idea/workspace.xml
+
+# Reference-only upstream checkout, not part of this repository
+pulse-main/
