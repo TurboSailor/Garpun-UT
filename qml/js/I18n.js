@@ -713,3 +713,13 @@ function t(key, args) {
 function tr(key, args) {
     return t(key, args);
 }
+
+// Resolve the language as the module loads, not on first use.
+//
+// t() is a plain function, so anything built declaratively from it freezes at
+// its first evaluation — the tab strip and the accent list are both arrays of
+// that kind. Those bindings run before any Component.onCompleted, so detecting
+// there left English labels under a Russian interface. Top-level code in a
+// .pragma library runs once at import, ahead of every binding, which removes
+// the ordering hazard for all consumers instead of one at a time.
+detect();

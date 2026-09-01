@@ -33,28 +33,20 @@ MainView {
     readonly property int toastSeq: Store.toastSeq
     onToastSeqChanged: toast.show(Store.toastText)
 
-    // I18n.t() is a plain function, not a bound property, so anything built
-    // from it freezes at first evaluation. The tab strip used to be a
-    // declarative array and was therefore built before detect() ran, leaving
-    // English labels under a Russian interface. Build it after.
     Component.onCompleted: {
-        I18n.detect();
-        tabs = buildTabs();
         Pulse.systemDark = systemDark;
         Store.start();
     }
 
-    property var tabs: buildTabs()
-
-    function buildTabs() {
-        return [
-            { key: "today",   label: I18n.t("tab.today"),   glyph: "steps" },
-            { key: "health",  label: I18n.t("tab.health"),  glyph: "pulse" },
-            { key: "sleep",   label: I18n.t("tab.sleep"),   glyph: "moon" },
-            { key: "fitness", label: I18n.t("tab.fitness"), glyph: "timer" },
-            { key: "device",  label: I18n.t("tab.device"),  glyph: "watch" }
-        ];
-    }
+    // Safe to build declaratively: I18n resolves the language when the module
+    // is imported, before any of these bindings run.
+    readonly property var tabs: [
+        { key: "today",   label: I18n.t("tab.today"),   glyph: "steps" },
+        { key: "health",  label: I18n.t("tab.health"),  glyph: "pulse" },
+        { key: "sleep",   label: I18n.t("tab.sleep"),   glyph: "moon" },
+        { key: "fitness", label: I18n.t("tab.fitness"), glyph: "timer" },
+        { key: "device",  label: I18n.t("tab.device"),  glyph: "watch" }
+    ]
 
     property int tab: 0
     // Pages stay alive after their first visit so scroll position and chart
