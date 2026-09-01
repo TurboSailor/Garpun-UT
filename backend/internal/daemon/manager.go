@@ -384,6 +384,9 @@ func (m *Manager) Connect(addr string) error {
 		SyncTime:         m.settingBool("syncTime", true),
 		FirstConnect:     firstConnect,
 		KeepFilesOnWatch: m.settingBool("keepFilesOnWatch", false),
+		NotificationsAllowed: func() bool {
+			return m.settingBool("notificationsEnabled", true)
+		},
 	}, m.log)
 
 	m.wireHooks(sess, row)
@@ -761,8 +764,15 @@ func (m *Manager) notificationLoop() {
 					"id", n.Content.ID, "app", n.Content.AppIdentifier)
 			} else {
 				sess.SendNotification(n.Content)
-				m.log.Info("daemon: notification sent to watch",
-					"id", n.Content.ID, "app", n.Content.AppIdentifier, "title", n.Content.Title)
+				if sess.NotificationsSubscribed() {
+					m.log.Info("daemon: notification sent to watch",
+						"id", n.Content.ID, "app", n.Content.AppIdentifier, "title", n.Content.Title)
+				} else {
+					// The watch acknowledges the frame and drops it. Nothing on
+					// our side can change that: the switch lives on the watch.
+					m.log.Warn("daemon: watch has notifications switched off, it will not show this",
+						"id", n.Content.ID, "app", n.Content.AppIdentifier)
+				}
 			}
 		}
 	}

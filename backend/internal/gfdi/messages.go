@@ -912,11 +912,21 @@ const (
 	CategorySMS                uint8 = 12
 )
 
-func NotificationUpdate(updateType, categoryFlags, category uint8, id int32, phoneFlags uint8) []byte {
+// NotificationUpdate builds a 5033 NOTIFICATION_UPDATE.
+//
+// Field order matters and is easy to get subtly wrong: count sits between the
+// category and the id. Omitting it shifts the id and the phone flags by a
+// byte, and the watch then quietly ignores the notification instead of asking
+// for its attributes.
+//
+// count is how many notifications of this category are outstanding, matching
+// upstream NotificationUpdateMessage.
+func NotificationUpdate(updateType, categoryFlags, category, count uint8, id int32, phoneFlags uint8) []byte {
 	w := NewWriter()
 	w.U8(updateType)
 	w.U8(categoryFlags)
 	w.U8(category)
+	w.U8(count)
 	w.I32(id)
 	w.U8(phoneFlags)
 	return BuildFrame(MsgNotificationUpdate, w.Bytes())

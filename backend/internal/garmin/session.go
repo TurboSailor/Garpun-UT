@@ -44,6 +44,11 @@ type Options struct {
 	Model        string
 	// SyncTime enables answering CURRENT_TIME_REQUEST and sending TIME_UPDATED.
 	SyncTime bool
+	// NotificationsAllowed reports whether the user wants notifications
+	// forwarded. It answers NOTIFICATION_SUBSCRIPTION: the reply carries the
+	// phone's willingness, which is independent of the enable flag the watch
+	// sends. Replying "disabled" makes the watch stop asking altogether.
+	NotificationsAllowed func() bool
 	// FirstConnect sends the pairing completion events the watch expects the
 	// first time a new host shows up.
 	FirstConnect bool
@@ -87,9 +92,23 @@ type Session struct {
 
 	notifyMu   sync.Mutex
 	notifState *notificationTransfer
+	// notifCounts tracks outstanding notification ids per category, so the
+	// count byte in NOTIFICATION_UPDATE reflects what the watch still holds.
+	notifCounts map[uint8]map[int32]bool
+	// notifSubscribed is the watch's own switch, reported over 5036.
+	notifSubscribed bool
 
 	// Hooks let the daemon supply data the protocol layer must not know about.
 	Hooks Hooks
+}
+
+// NotificationsSubscribed reports whether the watch currently wants phone
+// notifications. A watch with notifications switched off in its own settings
+// says so over 5036 and ignores everything we push until that changes.
+func (s *Session) NotificationsSubscribed() bool {
+	s.notifyMu.Lock()
+	defer s.notifyMu.Unlock()
+	return s.notifSubscribed
 }
 
 // Hooks are supplied by the daemon to answer watch-initiated requests.
@@ -318,7 +337,22 @@ func (s *Session) handle(f *gfdi.Frame) {
 	case gfdi.MsgNotificationSubscription:
 		r := gfdi.NewReader(f.Payload)
 		enable, _ := r.U8()
-		s.send(gfdi.NotificationSubscriptionStatus(enable == 1, enable))
+
+		// The watch reports whether it currently wants notifications; the
+		// reply reports whether we are willing to send them. Conflating the
+		// two tells a watch with notifications switched off that the phone
+		// will never provide any, and it stops asking.
+		allowed := true
+		if s.opts.NotificationsAllowed != nil {
+			allowed = s.opts.NotificationsAllowed()
+		}
+		s.notifyMu.Lock()
+		s.notifSubscribed = enable == 1
+		s.notifyMu.Unlock()
+
+		s.log.Info("garmin: notification subscription",
+			"watchWants", enable == 1, "phoneAllows", allowed)
+		s.send(gfdi.NotificationSubscriptionStatus(allowed, enable))
 
 	case gfdi.MsgNotificationControl:
 		s.onNotificationControl(f)

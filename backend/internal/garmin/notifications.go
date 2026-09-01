@@ -46,12 +46,46 @@ func (s *Session) SendNotification(n NotificationContent) {
 		flags |= 0x10 // ACTION_DECLINE
 	}
 	phoneFlags := uint8(0x02) // NEW_ACTIONS
-	s.send(gfdi.NotificationUpdate(gfdi.NotifUpdateAdd, flags, n.Category, n.ID, phoneFlags))
+
+	s.notifyMu.Lock()
+	if s.notifCounts == nil {
+		s.notifCounts = map[uint8]map[int32]bool{}
+	}
+	byID := s.notifCounts[n.Category]
+	if byID == nil {
+		byID = map[int32]bool{}
+		s.notifCounts[n.Category] = byID
+	}
+	byID[n.ID] = true
+	count := clampCount(len(byID))
+	s.notifyMu.Unlock()
+
+	s.log.Debug("garmin: notification update out", "id", n.ID, "category", n.Category, "count", count)
+	s.send(gfdi.NotificationUpdate(gfdi.NotifUpdateAdd, flags, n.Category, count, n.ID, phoneFlags))
 }
 
 // RemoveNotification tells the watch a notification is gone.
 func (s *Session) RemoveNotification(id int32, category uint8) {
-	s.send(gfdi.NotificationUpdate(gfdi.NotifUpdateRemove, 0x02, category, id, 0x02))
+	s.notifyMu.Lock()
+	if byID := s.notifCounts[category]; byID != nil {
+		delete(byID, id)
+	}
+	count := clampCount(len(s.notifCounts[category]))
+	s.notifyMu.Unlock()
+
+	s.send(gfdi.NotificationUpdate(gfdi.NotifUpdateRemove, 0x02, category, count, id, 0x02))
+}
+
+// clampCount keeps the outstanding count inside the single byte the wire
+// format allows.
+func clampCount(n int) uint8 {
+	if n > 0xFF {
+		return 0xFF
+	}
+	if n < 0 {
+		return 0
+	}
+	return uint8(n)
 }
 
 func (s *Session) onNotificationControl(f *gfdi.Frame) {
@@ -60,6 +94,8 @@ func (s *Session) onNotificationControl(f *gfdi.Frame) {
 		s.send(gfdi.NotificationControlStatus(false))
 		return
 	}
+
+	s.log.Debug("garmin: notification control in", "command", ctrl.Command, "id", ctrl.NotificationID)
 
 	switch ctrl.Command {
 	case gfdi.NotifCmdGetNotificationAttributes:

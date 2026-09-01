@@ -267,3 +267,44 @@ func TestOurCapabilitiesBitfield(t *testing.T) {
 		}
 	}
 }
+
+// TestNotificationUpdateLayout pins the field order of 5033. The count byte
+// sits between the category and the id; dropping it shifts the id and the
+// phone flags by one byte and the watch then ignores the notification without
+// any error, which is exactly the failure this guards.
+func TestNotificationUpdateLayout(t *testing.T) {
+	frame := NotificationUpdate(NotifUpdateAdd, 0x02, CategorySMS, 3, 0x01020304, 0x02)
+
+	parsed, err := ParseFrame(frame)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if parsed.Type != MsgNotificationUpdate {
+		t.Fatalf("type = %d, want %d", parsed.Type, MsgNotificationUpdate)
+	}
+
+	want := []byte{
+		NotifUpdateAdd, // update type
+		0x02,           // category flags
+		CategorySMS,    // category
+		0x03,           // count
+		0x04, 0x03, 0x02, 0x01, // id, little endian
+		0x02, // phone flags
+	}
+	if !bytes.Equal(parsed.Payload, want) {
+		t.Errorf("payload = % X\n    want = % X", parsed.Payload, want)
+	}
+}
+
+// A removal repeats the id so the watch can retract the right entry.
+func TestNotificationRemoveLayout(t *testing.T) {
+	frame := NotificationUpdate(NotifUpdateRemove, 0x02, CategoryEmail, 0, 42, 0x02)
+	parsed, err := ParseFrame(frame)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	want := []byte{NotifUpdateRemove, 0x02, CategoryEmail, 0x00, 42, 0, 0, 0, 0x02}
+	if !bytes.Equal(parsed.Payload, want) {
+		t.Errorf("payload = % X\n    want = % X", parsed.Payload, want)
+	}
+}
