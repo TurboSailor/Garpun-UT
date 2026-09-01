@@ -22,10 +22,11 @@ CLICK_META := click/manifest.json click/pulse.apparmor click/pulse.desktop click
 
 all: click
 
-# Cross-compiled daemon + diagnostic CLI.
+# Cross-compiled daemon, Waydroid notification relay and diagnostic CLI.
 backend:
 	mkdir -p $(PKG)/bin
 	cd $(BACKEND_DIR) && $(GO_BUILD) -o $(CURDIR)/$(PKG)/bin/pulsed ./cmd/pulsed
+	cd $(BACKEND_DIR) && $(GO_BUILD) -o $(CURDIR)/$(PKG)/bin/pulse-wdnotify ./cmd/pulse-wdnotify
 	cd $(BACKEND_DIR) && $(GO_BUILD) -o $(CURDIR)/$(PKG)/bin/pulsectl ./cmd/pulsectl
 
 qml:

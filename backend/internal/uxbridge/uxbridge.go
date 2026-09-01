@@ -49,6 +49,8 @@ type Notification struct {
 type Options struct {
 	EnableFreedesktop    bool
 	EnableWaydroid       bool
+	EnableCalls          bool
+	EnableMusic          bool
 	WaydroidAddr         string
 	WaydroidPollInterval time.Duration
 
@@ -125,11 +127,15 @@ func New(log *slog.Logger, opts Options) (*Bridge, error) {
 	if opts.EnableWaydroid {
 		b.startWaydroid()
 	}
-	if err := b.startCalls(); err != nil {
-		log.Debug("uxbridge: telephony unavailable", "err", err)
+	if opts.EnableCalls {
+		if err := b.startCalls(); err != nil {
+			log.Debug("uxbridge: telephony unavailable", "err", err)
+		}
 	}
-	if err := b.startMusic(); err != nil {
-		log.Debug("uxbridge: media player unavailable", "err", err)
+	if opts.EnableMusic {
+		if err := b.startMusic(); err != nil {
+			log.Debug("uxbridge: media player unavailable", "err", err)
+		}
 	}
 	return b, nil
 }

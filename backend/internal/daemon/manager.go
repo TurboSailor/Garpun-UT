@@ -50,6 +50,10 @@ type Deps struct {
 type NotifyEvent struct {
 	Content garmin.NotificationContent
 	Removed bool
+	// Source is where the notification originated: "freedesktop" for the
+	// phone's own, "waydroid" for an Android one relayed into the shade.
+	// It is what the notifyWaydroid setting filters on.
+	Source string
 }
 
 // Progress describes an in-flight sync.
@@ -735,6 +739,11 @@ func (m *Manager) notificationLoop() {
 			m.events.Publish("notification", n.Content)
 			if !m.settingBool("notificationsEnabled", true) {
 				m.log.Debug("daemon: notification dropped, forwarding disabled",
+					"id", n.Content.ID, "app", n.Content.AppIdentifier)
+				continue
+			}
+			if n.Source == "waydroid" && !m.settingBool("notifyWaydroid", true) {
+				m.log.Debug("daemon: android notification dropped, waydroid forwarding off",
 					"id", n.Content.ID, "app", n.Content.AppIdentifier)
 				continue
 			}

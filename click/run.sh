@@ -9,7 +9,9 @@ APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/pulse"
 PIDFILE="$RUNTIME_DIR/pulsed.pid"
+WD_PIDFILE="$RUNTIME_DIR/pulse-wdnotify.pid"
 LOG="$CACHE_DIR/pulsed.log"
+WD_LOG="$CACHE_DIR/pulse-wdnotify.log"
 MAX_LOG=5242880
 
 # /proc/net/tcp keeps ports in uppercase hex: 21830 == 0x5546, state 0A == LISTEN.
@@ -51,6 +53,19 @@ if ! daemon_alive; then
         api_up && break
         sleep 0.2
     done
+fi
+
+# Waydroid notification relay. Independent of pulsed: it only needs the session
+# bus, and it is what puts Android notifications into the Lomiri shade. Skipped
+# when Waydroid is not installed on the device.
+if command -v waydroid >/dev/null 2>&1; then
+    if [ -f "$WD_PIDFILE" ] && [ -r "/proc/$(cat "$WD_PIDFILE" 2>/dev/null)/comm" ]; then
+        :
+    else
+        echo "=== pulse-wdnotify start $(date -Is) ===" >>"$WD_LOG"
+        setsid "$APP_DIR/bin/pulse-wdnotify" >>"$WD_LOG" 2>&1 </dev/null &
+        echo $! >"$WD_PIDFILE"
+    fi
 fi
 
 cd "$APP_DIR"

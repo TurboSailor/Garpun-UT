@@ -19,6 +19,11 @@ import (
 const (
 	ifaceNotifications = "org.freedesktop.Notifications"
 	monitorRule        = "type='method_call',interface='org.freedesktop.Notifications',member='Notify'"
+
+	// Hints set by pulse-wdnotify when it relays an Android notification.
+	// Kept in sync with internal/fdnotify.
+	hintSource  = "x-pulse-source"
+	hintAppName = "x-pulse-appname"
 )
 
 func (b *Bridge) startFreedesktop() error {
@@ -110,6 +115,7 @@ func parseNotifyCall(body []any) (Notification, bool) {
 
 	appID := appName
 	category := ""
+	source := SourceFreedesktop
 	if len(body) >= 7 {
 		if hints, ok := body[6].(map[string]dbus.Variant); ok {
 			if v, ok := hints["desktop-entry"]; ok {
@@ -120,11 +126,24 @@ func parseNotifyCall(body []any) (Notification, bool) {
 			if v, ok := hints["category"]; ok {
 				category, _ = v.Value().(string)
 			}
+			// pulse-wdnotify relays Android notifications through the shade and
+			// stamps where they came from, so they keep their own identity here
+			// instead of masquerading as native ones.
+			if v, ok := hints[hintSource]; ok {
+				if s, ok := v.Value().(string); ok && s != "" {
+					source = s
+				}
+			}
+			if v, ok := hints[hintAppName]; ok {
+				if s, ok := v.Value().(string); ok && s != "" {
+					appName = s
+				}
+			}
 		}
 	}
 
 	n := Notification{
-		Source:   SourceFreedesktop,
+		Source:   source,
 		AppID:    appID,
 		AppName:  appName,
 		Title:    summary,

@@ -76,11 +76,15 @@ func run(log *slog.Logger, addr, dbPath, waydroidAddr string, noBluetooth bool) 
 
 	// Phone-side integrations. Each one is optional: a missing session bus or
 	// a stopped Waydroid container must not keep the watch from syncing.
+	//
+	// Android notifications are not polled here: pulse-wdnotify relays them
+	// into the Lomiri shade, and the freedesktop monitor below picks them up
+	// from there. That keeps one source of truth and puts them in the phone's
+	// own notification list instead of only on the watch.
 	bridge, err := uxbridge.New(log, uxbridge.Options{
-		EnableFreedesktop:    true,
-		EnableWaydroid:       db.Setting("notifyWaydroid", "true") != "false",
-		WaydroidAddr:         waydroidAddr,
-		WaydroidPollInterval: 2 * time.Second,
+		EnableFreedesktop: true,
+		EnableCalls:       true,
+		EnableMusic:       true,
 	})
 	if err != nil {
 		log.Warn("notification bridge unavailable", "err", err)
@@ -190,6 +194,7 @@ func adaptNotifications(ctx context.Context, b *uxbridge.Bridge) <-chan daemon.N
 				}
 				ev := daemon.NotifyEvent{
 					Removed: n.Removed,
+					Source:  n.Source,
 					Content: garmin.NotificationContent{
 						ID:            n.ID,
 						AppIdentifier: n.AppID,
