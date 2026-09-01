@@ -1,38 +1,56 @@
 # Garpun-UT
 
-Порт [Pulse](https://github.com/) — форка Gadgetbridge для часов Garmin — на **Ubuntu Touch 24.04** (Lomiri, aarch64).
+Порт [Pulse](https://zachy.cc) — Garmin-only форка [Gadgetbridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) — на **Ubuntu Touch 24.04** (Lomiri, aarch64).
 
-Оригинальное приложение — Android (Java/Kotlin, ~3800 файлов). Здесь оно переписывается
-на нативный для Ubuntu Touch стек:
+Оригинал Android (`cc.zachy.pulse`) здесь не хранится; это нативная переписка:
 
 | Слой | Технология |
 |---|---|
-| Демон | Go, BLE через BlueZ D-Bus, протокол Garmin GFDI, парсер FIT, SQLite |
+| Демон `pulsed` | Go · BLE через BlueZ D-Bus · протокол Garmin GFDI · парсер/энкодер FIT · SQLite |
 | Фронтенд | QML / Ubuntu.Components 1.3 |
 | Упаковка | click-пакет `cc.zachy.pulse` |
 
 ## Структура
 
 ```
-pulse-main/   исходный Android-проект Pulse (справочник, AGPLv3)
-pulse-ut/     порт на Ubuntu Touch
-  backend/    Go-демон pulsed + диагностический pulsectl
-  qml/        QML-фронтенд
-  click/      манифест, AppArmor-профиль, .desktop
-  docs/       извлечённые из оригинала спецификации протокола
-  testdata/   реальные FIT-файлы, снятые с Forerunner 255
+backend/    Go-модуль: pulsed + pulsectl
+qml/        QML-фронтенд (Today / Health / Sleep / Fitness / Device)
+click/      манифест, AppArmor, .desktop, run.sh
+scripts/    build.sh / deploy.sh / logs.sh
+docs/       извлечённые из оригинала спецификации протокола
+testdata/   реальные FIT-файлы с Forerunner 255
 ```
+
+Локальный справочник исходников Android при необходимости кладётся рядом как
+`pulse-main/` (в `.gitignore`, в репозиторий не входит).
+
+## Сборка и деплой
+
+Телефон должен быть в `adb devices`. На macOS `click` нет — упаковка
+происходит на устройстве.
+
+```bash
+make click     # cross-compile arm64 + сборка .click на телефоне
+make deploy    # click install --force --allow-unauthenticated
+make logs      # journal + pulsed.log
+```
+
+Пароль sudo на телефоне по умолчанию читается из `PULSE_SUDO_PASS`
+(см. `scripts/deploy.sh`).
 
 ## Состояние
 
-Проверено на реальном железе (Nothing Phone 1 с Ubuntu Touch 24.04 + Garmin Forerunner 255):
+Проверено на Nothing Phone 1 (UT 24.04) + Garmin Forerunner 255:
 
 - BLE-сканирование, сопряжение и подключение через BlueZ D-Bus
 - GFDI-транспорт v2 (multi-link), COBS, CRC, кадрирование
-- Полный цикл инициализации сессии (device info → auth → capabilities → sync ready)
-- Синхронизация файлов с часов: листинг директории, скачивание, ARCHIVE
-- Разбор FIT-файлов (шаги, пульс, стресс, body battery, дыхание, сон)
+- Инициализация сессии: device info → auth → capabilities → sync ready
+- Синхронизация файлов: листинг, скачивание, ARCHIVE, пропуск уже скачанных
+- FIT → SQLite → аналитика дашборда (шаги, пульс, стресс, body battery, сон)
+- Погода Open-Meteo → FIT weather payload на часы
+- Уведомления freedesktop / Waydroid / ofono / MPRIS → часы
+- QML UI: 5 вкладок + детали, компиляция на устройстве `ALL OK`
 
 ## Лицензия
 
-Порт наследует **AGPLv3** оригинального Gadgetbridge/Pulse.
+AGPLv3, как у Gadgetbridge / Pulse.
