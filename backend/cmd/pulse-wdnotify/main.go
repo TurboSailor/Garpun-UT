@@ -14,28 +14,38 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
-	"pulse/backend/internal/fdnotify"
+	"pulse/backend/internal/postal"
 	"pulse/backend/internal/uxbridge"
 )
 
+// appID is this click package's push identity: <package>_<hook>. The push
+// service refuses to deliver for anything it cannot resolve to an installed
+// application declaring a push-helper.
+const appID = "cc.zachy.pulse_pulse"
+
 func main() {
 	var (
-		waydroid = flag.String("waydroid", "192.168.240.112:5555", "Waydroid adb endpoint")
-		interval = flag.Duration("interval", 2*time.Second, "how often to poll the container")
-		debug    = flag.Bool("debug", false, "verbose logging")
-		sudoPass = flag.String("sudo-pass", "", "password for the privileged `waydroid shell` fallback")
+		waydroid   = flag.String("waydroid", "192.168.240.112:5555", "Waydroid adb endpoint")
+		interval   = flag.Duration("interval", 2*time.Second, "how often to poll the container")
+		pulsedAddr = flag.String("pulsed", "127.0.0.1:21830", "pulsed API address, for mirroring to the watch")
+		debug      = flag.Bool("debug", false, "verbose logging")
+		sudoPass   = flag.String("sudo-pass", "", "password for the privileged `waydroid shell` fallback")
 	)
 	flag.Parse()
 
@@ -45,25 +55,21 @@ func main() {
 	}
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 
-	if err := run(log, *waydroid, *interval, *sudoPass); err != nil {
+	if err := run(log, *waydroid, *pulsedAddr, *interval, *sudoPass); err != nil {
 		log.Error("pulse-wdnotify exited", "err", err)
 		os.Exit(1)
 	}
 }
 
-func run(log *slog.Logger, addr string, interval time.Duration, sudoPass string) error {
+func run(log *slog.Logger, addr, pulsedAddr string, interval time.Duration, sudoPass string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	shade, err := fdnotify.New()
+	shade, err := postal.New(appID)
 	if err != nil {
 		return err
 	}
 	defer shade.Disconnect()
-
-	if name, vendor, version, err := shade.ServerInfo(); err == nil {
-		log.Info("notification server", "name", name, "vendor", vendor, "version", version)
-	}
 
 	bridge, err := uxbridge.New(log, uxbridge.Options{
 		EnableWaydroid:       true,
@@ -76,8 +82,14 @@ func run(log *slog.Logger, addr string, interval time.Duration, sudoPass string)
 	}
 	defer bridge.Close()
 
-	r := &relay{log: log, shade: shade, posted: map[int32]uint32{}}
-	log.Info("relaying waydroid notifications into the shade", "addr", addr, "interval", interval)
+	r := &relay{
+		log:    log,
+		shade:  shade,
+		pulsed: &pulsedClient{log: log, addr: pulsedAddr, http: &http.Client{Timeout: 3 * time.Second}},
+		tags:   map[int32]string{},
+	}
+	log.Info("relaying waydroid notifications into the notification list",
+		"addr", addr, "interval", interval, "postalPath", shade.Path())
 
 	for {
 		select {
@@ -93,15 +105,20 @@ func run(log *slog.Logger, addr string, interval time.Duration, sudoPass string)
 	}
 }
 
-// relay tracks which shade entry belongs to which bridge notification so an
-// update replaces the old bubble instead of stacking a new one, and a removal
-// in Android closes the entry here too.
+// relay turns each Android notification into a native Ubuntu Touch one and
+// tells pulsed about it.
+//
+// Two sinks, because they are genuinely different systems. The push service
+// owns the phone's notification list; the watch is fed by pulsed, which
+// watches the session bus and therefore cannot see anything the push service
+// delivered. Posting to both keeps one poller and no duplicates.
 type relay struct {
-	log   *slog.Logger
-	shade *fdnotify.Client
+	log    *slog.Logger
+	shade  *postal.Client
+	pulsed *pulsedClient
 
-	mu     sync.Mutex
-	posted map[int32]uint32
+	mu   sync.Mutex
+	tags map[int32]string
 }
 
 func (r *relay) handle(n uxbridge.Notification) {
@@ -109,45 +126,95 @@ func (r *relay) handle(n uxbridge.Notification) {
 		return
 	}
 
-	r.mu.Lock()
-	serverID, seen := r.posted[n.ID]
-	r.mu.Unlock()
-
-	if n.Removed {
-		if !seen {
-			return
-		}
-		if err := r.shade.Close(serverID); err != nil {
-			r.log.Debug("could not close shade entry", "err", err, "id", serverID)
-		}
-		r.mu.Lock()
-		delete(r.posted, n.ID)
-		r.mu.Unlock()
-		r.log.Info("notification retracted", "app", n.AppName, "shadeId", serverID)
-		return
-	}
-
 	appName := n.AppName
 	if appName == "" {
 		appName = n.AppID
 	}
-	id, err := r.shade.Post(fdnotify.Notification{
-		AppName:    appName,
-		AppID:      n.AppID,
-		Source:     uxbridge.SourceWaydroid,
-		Summary:    n.Title,
-		Body:       n.Body,
-		ReplacesID: serverID,
-	})
-	if err != nil {
-		r.log.Warn("could not post to the shade", "err", err, "app", appName)
+	key := n.AppID + ":" + strconv.FormatInt(int64(n.ID), 10)
+
+	r.mu.Lock()
+	tag, seen := r.tags[n.ID]
+	r.mu.Unlock()
+
+	if n.Removed {
+		if seen {
+			if _, err := r.shade.ClearPersistent(tag); err != nil {
+				r.log.Debug("could not clear the notification list entry", "err", err, "tag", tag)
+			}
+			r.mu.Lock()
+			delete(r.tags, n.ID)
+			r.mu.Unlock()
+		}
+		r.pulsed.inject(key, n, appName, true)
+		r.log.Info("notification retracted", "app", appName)
 		return
 	}
 
-	r.mu.Lock()
-	r.posted[n.ID] = id
-	r.mu.Unlock()
-	r.log.Info("notification relayed", "app", appName, "title", n.Title, "shadeId", id)
+	if !seen {
+		tag = "wd-" + strconv.FormatInt(int64(n.ID), 10)
+	}
+	// Posting the same tag again replaces the entry rather than stacking one.
+	err := r.shade.Post(tag, postal.Card{
+		Summary: appName,
+		Body:    summaryBody(n),
+		Popup:   true,
+		Persist: true,
+	})
+	if err != nil {
+		r.log.Warn("could not post to the notification list", "err", err, "app", appName)
+	} else {
+		r.mu.Lock()
+		r.tags[n.ID] = tag
+		r.mu.Unlock()
+	}
+
+	r.pulsed.inject(key, n, appName, false)
+	r.log.Info("notification relayed", "app", appName, "title", n.Title, "tag", tag)
+}
+
+// summaryBody keeps the Android title visible: the card summary is the app
+// name, so the title has to lead the body or it is lost.
+func summaryBody(n uxbridge.Notification) string {
+	switch {
+	case n.Title != "" && n.Body != "":
+		return n.Title + ": " + n.Body
+	case n.Title != "":
+		return n.Title
+	default:
+		return n.Body
+	}
+}
+
+// pulsedClient forwards to the local daemon so the watch mirrors the shade.
+// pulsed not running is normal — the relay still fills the phone's list.
+type pulsedClient struct {
+	log  *slog.Logger
+	addr string
+	http *http.Client
+}
+
+func (p *pulsedClient) inject(key string, n uxbridge.Notification, appName string, removed bool) {
+	if p == nil {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"key":     key,
+		"source":  uxbridge.SourceWaydroid,
+		"appId":   n.AppID,
+		"appName": appName,
+		"title":   n.Title,
+		"body":    n.Body,
+		"removed": removed,
+	})
+	if err != nil {
+		return
+	}
+	resp, err := p.http.Post("http://"+p.addr+"/api/notifications", "application/json", bytes.NewReader(payload))
+	if err != nil {
+		p.log.Debug("pulsed unreachable, watch will not mirror this one", "err", err)
+		return
+	}
+	resp.Body.Close()
 }
 
 // privilegedRunner is the fallback into the container for when its adbd

@@ -15,7 +15,8 @@ ADB=(adb)
 die() { echo "build.sh: $*" >&2; exit 1; }
 
 [ -d "$PKG_DIR" ] || die "$PKG_DIR does not exist (run: make pkg)"
-for f in manifest.json pulse.apparmor pulse.desktop pulse.png run.sh bin/pulsed qml/Main.qml; do
+for f in manifest.json pulse.apparmor pulse.desktop pulse.png run.sh pushexec push.json \
+         push-apparmor.json bin/pulsed bin/pulse-wdnotify qml/Main.qml; do
     [ -e "$PKG_DIR/$f" ] || die "missing $PKG_DIR/$f"
 done
 "${ADB[@]}" get-state >/dev/null 2>&1 || die "no adb device (try: adb kill-server && adb start-server)"

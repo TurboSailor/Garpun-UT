@@ -48,5 +48,13 @@ fi
 echo ">> aa-status:"
 echo "$prof"
 
+# The push service resolves an app's push-helper once and caches it. After a
+# re-install that cache points at the previous unpack directory, Postal
+# silently stops persisting anything, so bounce it here.
+echo ">> restarting lomiri-push-service (drops the stale push-helper cache)"
+"${ADB[@]}" shell "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/32011/bus \
+    systemctl --user restart lomiri-push-service" >/dev/null 2>&1 \
+    || echo "!! could not restart lomiri-push-service; notifications may not persist"
+
 ver="$(printf '%s' "$pkg" | awk '{print $2}')"
 echo ">> app id: cc.zachy.pulse_pulse_$ver  (tap the icon; adb launches lack a trust session)"

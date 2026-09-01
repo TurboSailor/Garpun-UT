@@ -19,7 +19,7 @@ Item {
         for (var i = 0; i < enKeys.length; i++) {
             var k = enKeys[i];
             if (!ru.hasOwnProperty(k)) missingRu.push(k);
-            else if (ru[k] === en[k] && !/^(sum\.swolf|metric\.body_energy|accent\.|notifications\.src_waydroid|unit\.pct)/.test(k))
+            else if (ru[k] === en[k] && !/^(sum\.swolf|metric\.body_energy|lock\.body_battery$|accent\.|notifications\.src_waydroid|unit\.pct)/.test(k))
                 untranslated.push(k);
         }
         for (var j = 0; j < ruKeys.length; j++) {

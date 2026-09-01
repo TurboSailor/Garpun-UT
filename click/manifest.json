@@ -10,6 +10,10 @@
         "pulse": {
             "apparmor": "pulse.apparmor",
             "desktop": "pulse.desktop"
+        },
+        "push": {
+            "apparmor": "push-apparmor.json",
+            "push-helper": "push.json"
         }
     }
 }

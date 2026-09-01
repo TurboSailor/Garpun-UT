@@ -311,7 +311,16 @@ var DICT_EN = {
     // Greetings
     "greeting.morning": "Good morning",
     "greeting.afternoon": "Good afternoon",
-    "greeting.evening": "Good evening"
+    "greeting.evening": "Good evening",
+
+    // Lock screen infographic (libusermetrics). %1 is substituted by the
+    // system, not by t(), so these keys are always looked up without args.
+    "lock.steps": "%1 steps today",
+    "lock.steps_empty": "No step data",
+    "lock.body_battery": "Body Battery %1%",
+    "lock.body_battery_empty": "Body Battery unavailable",
+    "lock.watch_battery": "Watch battery %1%",
+    "lock.watch_battery_empty": "Watch not connected"
 };
 
 var DICT_RU = {
@@ -619,7 +628,15 @@ var DICT_RU = {
     // Greetings
     "greeting.morning": "Доброе утро",
     "greeting.afternoon": "Добрый день",
-    "greeting.evening": "Добрый вечер"
+    "greeting.evening": "Добрый вечер",
+
+    // Экран блокировки (libusermetrics). %1 подставляет система, не t().
+    "lock.steps": "%1 шагов сегодня",
+    "lock.steps_empty": "Нет данных о шагах",
+    "lock.body_battery": "Body Battery %1%",
+    "lock.body_battery_empty": "Body Battery недоступен",
+    "lock.watch_battery": "Заряд часов %1%",
+    "lock.watch_battery_empty": "Часы не подключены"
 };
 
 // Detect system language from Qt environment.

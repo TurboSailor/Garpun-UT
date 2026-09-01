@@ -123,9 +123,13 @@ func run(log *slog.Logger, addr, dbPath, waydroidAddr string, noBluetooth bool) 
 		defer bridge.Close()
 	}
 
-	var feed api.NotificationFeed
+	var (
+		feed api.NotificationFeed
+		sink api.NotificationSink
+	)
 	if bridge != nil {
 		feed = notificationFeed{bridge}
+		sink = notificationSink{bridge}
 	}
 
 	if !noBluetooth {
@@ -150,7 +154,7 @@ func run(log *slog.Logger, addr, dbPath, waydroidAddr string, noBluetooth bool) 
 
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           api.New(db, mgr, log, feed).Handler(),
+		Handler:           api.New(db, mgr, log, feed, sink).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	ln, err := net.Listen("tcp", addr)
@@ -221,6 +225,24 @@ func adaptNotifications(ctx context.Context, b *uxbridge.Bridge) <-chan daemon.N
 		}
 	}()
 	return out
+}
+
+// notificationSink lets a sibling process hand over a notification it already
+// delivered to the phone, so the watch mirrors it. pulse-wdnotify relays
+// Android notifications through the push service, which this daemon cannot
+// observe on the session bus.
+type notificationSink struct{ b *uxbridge.Bridge }
+
+func (s notificationSink) InjectJSON(key, source, appID, appName, title, body string, removed bool) error {
+	s.b.Inject(key, uxbridge.Notification{
+		Source:  source,
+		AppID:   appID,
+		AppName: appName,
+		Title:   title,
+		Body:    body,
+		Removed: removed,
+	})
+	return nil
 }
 
 // notificationFeed exposes the bridge history to the API.

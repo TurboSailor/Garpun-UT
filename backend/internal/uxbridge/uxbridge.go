@@ -183,6 +183,30 @@ func (b *Bridge) forgetKey(key string) {
 	b.mu.Unlock()
 }
 
+// Inject publishes a notification the bridge did not observe itself. It is how
+// a sibling process — pulse-wdnotify relaying Android notifications through
+// the push service — hands one over: that path never touches
+// org.freedesktop.Notifications, so the monitor cannot see it.
+//
+// key namespaces the entry so repeats update in place and a later removal
+// resolves to the same id.
+func (b *Bridge) Inject(key string, n Notification) Notification {
+	if key == "" {
+		key = "ext:" + n.Source + ":" + n.AppID + ":" + n.Title
+	} else {
+		key = "ext:" + key
+	}
+	n.ID = b.idFor(key)
+	if n.Category == 0 {
+		n.Category = categoryFor(n.AppID, n.AppName)
+	}
+	if n.Removed {
+		defer b.forgetKey(key)
+	}
+	b.emit(n)
+	return n
+}
+
 func (b *Bridge) emit(n Notification) {
 	if n.TsMs == 0 {
 		n.TsMs = time.Now().UnixMilli()

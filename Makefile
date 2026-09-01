@@ -16,7 +16,8 @@ QML_DIR     ?= qml
 
 GO         := go
 GO_BUILD   := CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) $(GO) build -trimpath -ldflags "-s -w"
-CLICK_META := click/manifest.json click/pulse.apparmor click/pulse.desktop click/pulse.png
+CLICK_META := click/manifest.json click/pulse.apparmor click/pulse.desktop click/pulse.png \
+              click/push-apparmor.json click/push.json
 
 .PHONY: all backend qml meta pkg click deploy logs clean
 
@@ -38,7 +39,8 @@ meta:
 	mkdir -p $(PKG)
 	cp $(CLICK_META) $(PKG)/
 	cp click/run.sh $(PKG)/run.sh
-	chmod +x $(PKG)/run.sh
+	cp click/pushexec $(PKG)/pushexec
+	chmod +x $(PKG)/run.sh $(PKG)/pushexec
 
 pkg: backend qml meta
 

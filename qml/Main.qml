@@ -222,6 +222,9 @@ MainView {
         anchors.fill: parent
     }
 
+    // Feeds the lock screen infographic; no visual footprint.
+    LockScreenMetrics {}
+
     Toast {
         id: toast
         anchors.horizontalCenter: parent.horizontalCenter

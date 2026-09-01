@@ -3,7 +3,8 @@
     "policy_groups": [
         "networking",
         "bluetooth",
-        "location"
+        "location",
+        "usermetrics"
     ],
     "policy_version": 20.04
 }

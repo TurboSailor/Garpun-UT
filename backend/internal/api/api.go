@@ -23,16 +23,24 @@ type NotificationFeed interface {
 	RecentJSON(limit int) any
 }
 
+// NotificationSink accepts a notification observed by another process. The
+// push service path is invisible to this daemon, so pulse-wdnotify hands over
+// what it relayed instead.
+type NotificationSink interface {
+	InjectJSON(key, source, appID, appName, title, body string, removed bool) error
+}
+
 // Server wires the daemon and the database into HTTP handlers.
 type Server struct {
 	db    *store.DB
 	mgr   *daemon.Manager
 	log   *slog.Logger
 	notes NotificationFeed
+	sink  NotificationSink
 }
 
-func New(db *store.DB, mgr *daemon.Manager, log *slog.Logger, notes NotificationFeed) *Server {
-	return &Server{db: db, mgr: mgr, log: log, notes: notes}
+func New(db *store.DB, mgr *daemon.Manager, log *slog.Logger, notes NotificationFeed, sink NotificationSink) *Server {
+	return &Server{db: db, mgr: mgr, log: log, notes: notes, sink: sink}
 }
 
 // Handler builds the router.
@@ -59,6 +67,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/findwatch", s.findWatch)
 	mux.HandleFunc("POST /api/findwatch/cancel", s.cancelFindWatch)
 	mux.HandleFunc("GET /api/notifications", s.notifications)
+	mux.HandleFunc("POST /api/notifications", s.injectNotification)
 	mux.HandleFunc("GET /api/events", s.events)
 	return logging(s.log, mux)
 }
@@ -422,6 +431,39 @@ func (s *Server) notifications(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, s.notes.RecentJSON(limit))
+}
+
+// injectNotification accepts a notification another process already delivered
+// to the phone, so the watch sees it too. pulse-wdnotify uses this for Android
+// notifications it relays through the push service.
+func (s *Server) injectNotification(w http.ResponseWriter, r *http.Request) {
+	if s.sink == nil {
+		writeErr(w, http.StatusServiceUnavailable, fmt.Errorf("no notification sink"))
+		return
+	}
+	var body struct {
+		Key     string `json:"key"`
+		Source  string `json:"source"`
+		AppID   string `json:"appId"`
+		AppName string `json:"appName"`
+		Title   string `json:"title"`
+		Body    string `json:"body"`
+		Removed bool   `json:"removed"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	if body.Title == "" && body.Body == "" && !body.Removed {
+		writeErr(w, http.StatusBadRequest, fmt.Errorf("empty notification"))
+		return
+	}
+	if err := s.sink.InjectJSON(body.Key, body.Source, body.AppID, body.AppName,
+		body.Title, body.Body, body.Removed); err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{"ok": true})
 }
 
 // ------------------------------------------------------------------- SSE ---
