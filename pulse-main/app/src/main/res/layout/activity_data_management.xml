@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pulse: tidied data-management screen — backup/restore up top as the friendly
+     path, raw database export/import grouped as Advanced. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/pulse_bg"
+    android:fillViewport="true"
+    tools:context="nodomain.freeyourgadget.gadgetbridge.activities.DataManagementActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Backup & restore -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/pulse_widget_bg"
+            android:padding="20dp">
+
+            <TextView
+                android:id="@+id/backupRestoreLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/activity_db_management_backup_restore_label"
+                android:textAllCaps="true"
+                android:fontFamily="@font/unbounded"
+                android:letterSpacing="0.06"
+                android:textColor="?attr/pulseAccent"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/backup_restore_intro"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/activity_db_management_backup_restore_explanation"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="13sp"
+                android:lineSpacingMultiplier="1.15" />
+
+            <Button
+                android:id="@+id/backupToZipButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="18dp"
+                android:background="@drawable/pulse_pill_primary"
+                android:text="@string/activity_db_management_export_to_zip"
+                android:textColor="@color/pulse_bg"
+                android:textAllCaps="false"
+                android:fontFamily="@font/plusjakarta_bold"
+                android:textSize="15sp"
+                android:stateListAnimator="@null" />
+
+            <Button
+                android:id="@+id/restoreFromZipButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/pulse_pill"
+                android:text="@string/activity_db_management_import_from_zip"
+                android:textColor="@color/pulse_text"
+                android:textAllCaps="false"
+                android:fontFamily="@font/plusjakarta_medium"
+                android:textSize="15sp"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
+
+        <!-- Advanced: raw database -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/pulse_widget_bg"
+            android:padding="20dp">
+
+            <TextView
+                android:id="@+id/exportImportLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/activity_db_management_exportimport_label"
+                android:textAllCaps="true"
+                android:fontFamily="@font/unbounded"
+                android:letterSpacing="0.06"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/db_management_intro"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/activity_db_management_import_export_explanation"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="13sp"
+                android:lineSpacingMultiplier="1.15" />
+
+            <TextView
+                android:id="@+id/activity_data_management_path"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/exportDataButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="18dp"
+                android:background="@drawable/pulse_pill"
+                android:text="@string/activity_DB_ExportButton"
+                android:textColor="@color/pulse_text"
+                android:textAllCaps="false"
+                android:fontFamily="@font/plusjakarta_medium"
+                android:textSize="15sp"
+                android:stateListAnimator="@null" />
+
+            <Button
+                android:id="@+id/importDataButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/pulse_pill"
+                android:text="@string/activity_DB_import_button"
+                android:textColor="@color/pulse_text"
+                android:textAllCaps="false"
+                android:fontFamily="@font/plusjakarta_medium"
+                android:textSize="15sp"
+                android:stateListAnimator="@null" />
+
+            <Button
+                android:id="@+id/showContentDataButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/pulse_pill"
+                android:text="@string/activity_DB_ShowContentButton"
+                android:textColor="@color/pulse_text"
+                android:textAllCaps="false"
+                android:fontFamily="@font/plusjakarta_medium"
+                android:textSize="15sp"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/pulse_widget_bg"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pref_header_auto_export"
+                android:textAllCaps="true"
+                android:fontFamily="@font/unbounded"
+                android:letterSpacing="0.06"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/autoExportSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="13sp"
+                android:lineSpacingMultiplier="1.15" />
+
+            <Button
+                android:id="@+id/autoExportButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="18dp"
+                android:background="@drawable/pulse_pill"
+                android:text="@string/pref_header_auto_export_db"
+                android:textColor="@color/pulse_text"
+                android:textAllCaps="false"
+                android:fontFamily="@font/plusjakarta_medium"
+                android:textSize="15sp"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

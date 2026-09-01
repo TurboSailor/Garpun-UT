@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pulse changelog. Newest release on top. -->
+<changelog>
+    <release version="0.99.0" versioncode="258">
+        <change>New: Settings &#8250; Advanced &#8250; Send debug logs &#8212; bundle your recent logs and send them to the developer to help track down a bug</change>
+        <change>The crash notification can now send a full debug report in one tap</change>
+        <change>Fixed the Sleep tab showing the same night when you change day</change>
+        <change>Fixed Your Week hanging on large histories</change>
+        <change>Weather no longer overwrites Breezy Weather data</change>
+        <change>Backups now save as a .zip file</change>
+        <change>About screen and notifications rebranded to Pulse</change>
+        <change>Translations for 20 languages</change>
+        <change>Synced the latest upstream Gadgetbridge changes</change>
+    </release>
+    <release version="0.93.0" versioncode="252">
+      <change>Initial support for AK75 Pro, AK86, AK102 (TopStep / FitCloud)</change>
+      <change>Initial support for DM58 (GloryFit Pro)</change>
+      <change>Initial support for Garmin Fenix 6S / Forerunner 170 Music</change>
+      <change>Initial support for Haylou S35 ANC</change>
+      <change>Initial support for Honor Watch 5 / 5 Pro / 6</change>
+      <change>Initial support for HUAWEI FreeClip 2</change>
+      <change>Initial support for iGPSPORT BiNavi / BiNavi Air / BSC 500</change>
+      <change>Initial support for MoYoung L70</change>
+      <change>Initial support for Ollee Watch One</change>
+      <change>Initial support for Soundcore Life Tune XR</change>
+      <change>Initial support for UNA Watch</change>
+      <change>Experimental support for Amazfit Balance 3, Balance Ultra, Bip Max, Cheetah 2 Ultra</change>
+      <change>Experimental support for BM6 Battery Monitor</change>
+      <change>Experimental support for Garmin CIRQA, Fenix 5S Plus</change>
+      <change>Experimental support for Honor Band 7, 9, 10</change>
+      <change>Experimental support for Xiaomi Scooter 5 Max</change>
+      <change>Add cumulative calories daily chart</change>
+      <change>Add Quick Settings tiles for some device (AAWireless, Sinilink, Shokz, Sony Headphones)</change>
+      <change>Amazfit Active 3 Premium: Fix map upload via Bluetooth</change>
+      <change>Bangle.js: Support notification actions</change>
+      <change>Casio GBD-200: Add world time / world clocks support</change>
+      <change>Casio GBD-200: Improve activity session sync</change>
+      <change>Casio: Fix notifications with long unicode text</change>
+      <change>Charts: Add battery voltage, current, power, temperature</change>
+      <change>Charts: Respect unit preferences</change>
+      <change>Charts: Use activity-specific units for charts</change>
+      <change>CoMaps: Add support for navigation instructions</change>
+      <change>Debug: Randomize test weather</change>
+      <change>Endurain: Upload workout photos</change>
+      <change>FIT Export: Add local timestamp, distance, elevation, step length</change>
+      <change>Fix crash when opening map view</change>
+      <change>Fix non-zero step counts at midnight after time zone change</change>
+      <change>Garmin HRM Pro+: Improved connection support</change>
+      <change>Garmin: Add point winds support</change>
+      <change>Garmin: Display notification on OAuth expiration</change>
+      <change>Garmin: Fix activity sync signal</change>
+      <change>Garmin: Fix crash on number parsing</change>
+      <change>Garmin: Fix crash when Bluetooth is disconnected</change>
+      <change>Garmin: Fix duplicated activities on some devices</change>
+      <change>Garmin: Fix race condition on some devices</change>
+      <change>Garmin: Fix realtime settings debug menu</change>
+      <change>Garmin: Improve activity sync on new sync protocol</change>
+      <change>Garmin: Improve recovery when service connection drops</change>
+      <change>Garmin: Move performance condition chart to standalone group</change>
+      <change>Gpx: Export and import power</change>
+      <change>H59: Add alarm support</change>
+      <change>Health Connect: Fix sleep sessions written with truncated stages</change>
+      <change>Health Connect: Fix sleep sync being cut off on some devices</change>
+      <change>Health Connect: Fix sync of GPS route for some devices</change>
+      <change>Health Connect: Fix sync of very long GPS routes</change>
+      <change>HUAWEI FreeClip 2: Add adaptive volume, extra media volume</change>
+      <change>HUAWEI FreeClip 2: Add find headphones</change>
+      <change>HUAWEI FreeClip 2: Add low Latency mode</change>
+      <change>Huawei: Add per-sample workout metrics (HR, speed, cadence, altitude) into activity track</change>
+      <change>Huawei: Avoid out-of-memory crash when uploading large music files</change>
+      <change>Huawei: Basic support for offline maps</change>
+      <change>Huawei: Fix activity sync on some recent watches</change>
+      <change>Huawei: GPS track uploading</change>
+      <change>Huawei: Improved calendar sync</change>
+      <change>InfiniTime: Add navigation competion percentage and more icons</change>
+      <change>Internet Helper: Improved error feedback</change>
+      <change>Mi Band 9 Active: Fix activity summary parsing</change>
+      <change>Pebble: Add support for Weather Land and Love Weather watchfaces</change>
+      <change>Prevent multiple find phone activities from being opened</change>
+      <change>Recognize "Google Messages" as SMS app</change>
+      <change>Sleep as Android: Add support for Huami (pre-Zepp-OS), Garmin and Xiaomi-protobuf devices</change>
+      <change>Sleep as Android: Add SpO2 support for Huami devices</change>
+      <change>SoFlow: Update icon and device kind to scooter</change>
+      <change>Sony WF-1000XM4: Add voice notifications</change>
+      <change>Sony WH-ULT900N: Enable more features</change>
+      <change>Soundcore Sport X20: Extend functionality</change>
+      <change>Victron SmartShunt: Persist battery power and current</change>
+      <change>Withings: Improved connection flow control</change>
+      <change>Workouts: Add function to set header photo</change>
+      <change>Xiaomi-protobuf: Add dynamic vibration pattern configuration screen</change>
+      <change>Xiaomi-protobuf: Fix cloudy weather icon</change>
+      <change>Xiaomi-protobuf: Improve daily summary parsing</change>
+      <change>Xiaomi-protobuf: Improve workout summary parsing</change>
+      <change>Xiaomi-protobuf: Parse workout details</change>
+      <change>Yawell Rings: Fix temperature sync to Health Connect</change>
+      <change>Zepp OS: Fix temperature and distance units</change>
+    </release>
+    <release version="0.92.2" versioncode="251">
+        <change>Charts: Avoid empty charts if no charts are enabled</change>
+        <change>Garmin: Fix regression in ExploreSync historical-catalog sync</change>
+        <change>Health Connect: Fix some workouts mapping</change>
+        <change>Huawei: Fix deadlock on activity listing</change>
+        <change>Improve connection to low power devices</change>
+        <change>Mi Band 6: Hide some invalid workout summary values</change>
+        <change>Shokz: Fix reading language from device</change>
+        <change>Soundcore Q30: Add some other device names</change>
+    </release>
+    <release version="0.92.1" versioncode="250">
+        <change>iGPSPORT: Fix activity track reprocessing</change>
+        <change>Fix sleep time mismatch on some devices</change>
+    </release>
+    <release version="0.92.0" versioncode="249">
+        <change>Add activity upload to Endurain / Wanderer</change>
+        <change>Initial support for Anker Soundcore Sport X20</change>
+        <change>Initial support for Blackview R3Max</change>
+        <change>Initial support for EarFun Free Pro 3</change>
+        <change>Initial support for Garmin Forerunner 170 / Forerunner 970</change>
+        <change>Initial support for Garmin GPSMAP H1</change>
+        <change>Initial support for Huawei Watch Fit 5 / 5 Pro</change>
+        <change>Initial support for iGPSPORT bike computers (BiNavi Air, BSC200, BSC200S, BSC300, iGS630, iGS630S, iGS800)</change>
+        <change>Initial support for Keep Health devices</change>
+        <change>Initial support for Kieslect Calling Smartwatch Kr Pro</change>
+        <change>Initial support for Matson MA98415 (BM2 battery monitors)</change>
+        <change>Initial support for Moondrop Space Travel 2 Ultra</change>
+        <change>Initial support for P22B1 (Moyoung / Da Fit)</change>
+        <change>Initial support for Realme Buds Air 6 Pro, Buds T200</change>
+        <change>Initial support for Redmi Buds 6</change>
+        <change>Initial support for Redmi Watch Move</change>
+        <change>Initial support for Sinilink audio amplifiers</change>
+        <change>Initial support for Soundbreener Core</change>
+        <change>Initial support for Victron SmartShunt</change>
+        <change>Initial support for Xplora XMOVE</change>
+        <change>Initial support for Yell Smart Watch GT3 (FitPro)</change>
+        <change>Experimental support for Xiaomi Smart Band 10 Pro</change>
+        <change>Add device-agnostic FIT activity export</change>
+        <change>Add setting to enable TRACE log level</change>
+        <change>Amazfit Balance: Fix code for outdoor cycling</change>
+        <change>Amazfit Bip Lite: Add workout GPS settings</change>
+        <change>Amazfit Bip S: Attempt to fix reboot on notification without subject or body</change>
+        <change>Bangle.jS: Add optional device target filter for com.banglejs.uart.tx intent</change>
+        <change>Bangle.js: Add support for different data types in intent extras</change>
+        <change>Casio GBD-200: Improved support</change>
+        <change>Casio: Improved connection stability</change>
+        <change>Charts: Add charts for generic sample</change>
+        <change>Charts: Add weekly/monthly temperature charts</change>
+        <change>Charts: Fix steps overshooting values</change>
+        <change>Charts: Improve HRV chart</change>
+        <change>Charts: Show VO2 max to decimal place</change>
+        <change>CMF Buds 2 Plus: Add spatial mode</change>
+        <change>CMF Buds 2 Plus: Enable touch configuration</change>
+        <change>CMF Buds 2a: Add touch options</change>
+        <change>CMF Buds: Enable low latency on more devices</change>
+        <change>CMF Buds: Enable spatial audio for more models</change>
+        <change>CMF Buds: Enable ultra bass for more devices</change>
+        <change>CMF Buds: Update equalizer presets</change>
+        <change>Colmi V76: Fix workout parsing</change>
+        <change>FitPro: Add camera</change>
+        <change>Fix connection attempts while bluetooth is off for some devices</change>
+        <change>Fix drawer being drawn behind status bar</change>
+        <change>Fix file type when sharing</change>
+        <change>Garmin: Fix activity sync getting stuck on some devices</change>
+        <change>Garmin: Fix empty caller when unknown</change>
+        <change>Garmin: Fix http request without headers</change>
+        <change>Garmin: Fix unknown transfer notification</change>
+        <change>Garmin: Show toast on waypoint upload complete</change>
+        <change>Garmin: Sync activity tracks for some GPS devices</change>
+        <change>Garmin: Sync and archive some unknown files (should prevent Instinct series reboots)</change>
+        <change>GPX: Fix parsing of timestamps without timezone</change>
+        <change>Health Connect: Fix data being skipped under some situations</change>
+        <change>Health Connect: Fix some crashes during sync</change>
+        <change>Huami: Avoid infinite loop when fetching very short activity</change>
+        <change>Huawei: Allow encryption to be enabled / disabled</change>
+        <change>Include workouts in activity list</change>
+        <change>Intent API: Add Alarm Intent API</change>
+        <change>Maps: Reduce memory usage</change>
+        <change>OpenTracks: Fix extra empty activity track and rare crash</change>
+        <change>Pebble: Add support for installing dual slot firmware</change>
+        <change>Pebble: Add support for pull to refresh for pebble health data</change>
+        <change>Pebble: Fix Pebble [Core 2 Duo / Time 2 / 2 Round] BLE pairing</change>
+        <change>Pebble: pass dev_settings to rebble store url, do enable pbw downloads in browser</change>
+        <change>Prevent crash on devices without GPS</change>
+        <change>Recognize Thunderbird for Android as email and ignore its summary notifications</change>
+        <change>Sony WF-1000XM5: Enable further capabilities</change>
+        <change>Track auto-fetch times per device</change>
+        <change>Xiaomi-protobuf: Fix alarm notifications</change>
+        <change>Xiaomi-protobuf: Fix notification dismissal after reconnection</change>
+        <change>Xiaomi-protobuf: Fix swapped min and max temperatures</change>
+        <change>Xiaomi-protobuf: Fix watchface management</change>
+        <change>Zepp OS: Weather stability improvements</change>
+    </release>
+    <release version="0.91.1" versioncode="248">
+        <change>Casio: Fix connection issues after first pairing</change>
+        <change>Fix occasional crash when leaving activity list</change>
+        <change>Garmin: Fix unknown transfer notification</change>
+        <change>Huawei: Fix connection stuck on authentication on newer firmware</change>
+        <change>OpenTracks integration: Remove unsupported elevation field</change>
+        <change>Xiaomi-protobuf: Fix GPS dropping mid-workout on newer firmware</change>
+    </release>
+    <release version="1.8" versioncode="256">
+        <change>Dropped unused Fossil watch assets</change>
+    </release>
+    <release version="1.7" versioncode="255">
+        <change>New typefaces — Plus Jakarta Sans and Space Grotesk</change>
+    </release>
+    <release version="1.6" versioncode="254">
+        <change>Today and Sleep no longer replay the ring fill and skeleton every visit — only when there's actually something to load</change>
+        <change>Tidied up some leftover wording</change>
+    </release>
+    <release version="1.5" versioncode="253">
+        <change>Back up and restore everything to a single .zip file (Data management)</change>
+        <change>First launch now offers to restore from a backup</change>
+        <change>Intensity minutes: a daily tile, with a daily view added to the chart</change>
+        <change>Material Symbols icons throughout, and Material 3 buttons + loading indicator</change>
+        <change>Springy ring fills and fade-through transitions; skeleton loaders while cards load</change>
+        <change>Pick which 4 stats show on the shareable card</change>
+        <change>Pulled in the upstream distance-format crash fix</change>
+    </release>
+    <release version="1.4" versioncode="252">
+        <change>Today is now a swipeable carousel — the ring rides along, then full pages of metric tiles with a Google-style page indicator</change>
+        <change>Prefer it all on one screen? Turn on Expanded layout in the customize editor to stack every card with no swiping</change>
+        <change>New on Today: a "This week" summary and your most recent workouts, right under the buttons</change>
+        <change>Smoother drag-and-drop in the customize editor — long-press a row and it lifts as you move it</change>
+    </release>
+    <release version="1.3" versioncode="251">
+        <change>Light mode — pick Light, Dark or System in Settings → Appearance</change>
+        <change>Accent colours — make Pulse yours: Neon Blue, Violet, Coral, Mint or Pink</change>
+        <change>Sleep insights — a sleep score, last-night stage hypnogram, nap detection and a 7-night trend</change>
+        <change>Week in Review — an animated weekly recap with an adaptive challenge, plus a Sunday-evening notification</change>
+        <change>Workouts — browse your recorded activities</change>
+        <change>Achievements — 14 badges to unlock; tap one to share it</change>
+        <change>VO₂ Max, Alarms and Calendar are now reachable from the menu</change>
+        <change>A welcome screen for first-time setup, and a personalised greeting on Today</change>
+        <change>New compact steps widget, and a refresh button on the home-screen widgets</change>
+        <change>Confetti when you hit a goal, and a chunkier progress ring with a rounded nub</change>
+        <change>Beat your goal? The ring keeps filling a second lap in a deeper shade</change>
+        <change>Redesigned Health tab — a customizable grid of metric cards with 7-day mini charts</change>
+        <change>Fuller Sleep tab — sleep score, last-night stages, bed/wake and a 7-night trend at a glance</change>
+        <change>Quick Settings tile — see today's steps from the pulldown and tap to open Pulse</change>
+        <change>Today's hero cards are now tinted tiles that fill with your progress</change>
+        <change>Lifetime totals and personal records on the Streak page; share your day as a card</change>
+    </release>
+    <release version="1.2" versioncode="250">
+        <change>Streaks: tap the flame to open a full Streak calendar — every day you hit your goal is highlighted</change>
+        <change>Goal celebration — the ring pops and you get a notification when you hit your daily goal</change>
+        <change>Goals moved to their own screen; set a sleep goal with an hours + minutes picker</change>
+        <change>Redesigned home-screen widget — pick your device and up to 3 stats, reconfigurable from the launcher</change>
+        <change>American units by default — miles, pounds and °F (changeable in Settings)</change>
+        <change>In-depth Steps charts restyled: neon line with a gradient fill and rounded stat cards</change>
+        <change>Toolbar device chip showing name + battery; redesigned About page</change>
+        <change>Stats now roll over to the new day at midnight instead of sticking on yesterday</change>
+        <change>Pulse heartbeat status-bar notification icon; all four tabs preload at launch</change>
+        <change>Shows "No sleep" instead of 0; fixed stat mix-ups with two devices and widget accuracy</change>
+    </release>
+    <release version="1.1" versioncode="249">
+        <change>Built-in weather: Pulse now fetches weather (Open-Meteo) and sends it to your watch</change>
+        <change>New Weather menu in the sidebar — use phone location or set a city</change>
+        <change>Custom daily step goal — tap the ring goal to set your own target</change>
+        <change>"On watch" shortcut to your Garmin's own settings (where supported)</change>
+        <change>All-native stat cards — tap any to open its in-depth chart</change>
+        <change>New pull-to-sync: the screen follows your finger and a thick bar fills as it syncs</change>
+        <change>Pulse splash + loading screen so stats never pop in</change>
+        <change>Much smoother — tabs load lazily and stats are computed off the main thread</change>
+        <change>Neon-themed app notification and in-depth charts</change>
+    </release>
+    <release version="1.0" versioncode="248">
+        <change>Pulse is here — a Garmin-only companion with a brand-new look</change>
+        <change>New Today home: big steps ring, live stat cards, and a device + battery chip</change>
+        <change>Four tabs: Today, Fitness, Sleep and Health, each with its own hero ring</change>
+        <change>zachy.cc aesthetic: near-black UI, neon-blue accents, Unbounded + Satoshi fonts</change>
+        <change>Fully dark throughout — toolbar, drawer, settings, Devices screen and gauges</change>
+        <change>Custom Pulse heartbeat app icon</change>
+        <change>Built on Gadgetbridge's Garmin engine — everything stays on your phone</change>
+    </release>
+</changelog>

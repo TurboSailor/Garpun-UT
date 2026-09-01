@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory
+        android:key="pref_category_activity_personal"
+        android:title="@string/activity_prefs_about_you">
+
+        <EditTextPreference
+            android:key="mi_user_alias"
+            android:maxLength="17"
+            android:title="@string/miband_prefs_alias"
+            android:icon="@drawable/ic_badge"
+            app:useSimpleSummaryProvider="true" />
+
+        <nodomain.freeyourgadget.gadgetbridge.util.XDatePreference
+            android:icon="@drawable/ic_calendar_month"
+            android:defaultValue="2000-01-01"
+            android:key="activity_user_date_of_birth"
+            android:title="@string/activity_prefs_date_birth" />
+
+        <ListPreference
+            android:icon="@drawable/ic_wc"
+            android:defaultValue="2"
+            android:entries="@array/gender"
+            android:entryValues="@array/gender_values"
+            android:key="activity_user_gender"
+            android:title="@string/activity_prefs_gender"
+            app:useSimpleSummaryProvider="true" />
+
+        <!--TODO: support localized heights and weights -->
+        <EditTextPreference
+            android:icon="@drawable/ic_height"
+            android:inputType="number"
+            android:key="activity_user_height_cm"
+            android:maxLength="3"
+            android:title="@string/activity_prefs_height_cm"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:icon="@drawable/ic_weight"
+            android:inputType="number"
+            android:key="activity_user_weight_kg"
+            android:maxLength="3"
+            android:title="@string/activity_prefs_weight_kg"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:icon="@drawable/ic_footprint"
+            android:inputType="number"
+            android:key="activity_user_step_length_cm"
+            android:maxLength="3"
+            android:title="@string/activity_prefs_step_length_cm"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+</PreferenceScreen>

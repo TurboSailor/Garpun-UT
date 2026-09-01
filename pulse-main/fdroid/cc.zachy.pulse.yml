@@ -1,0 +1,32 @@
+Categories:
+  - Connectivity
+  - Sports & Health
+License: AGPL-3.0
+AuthorName: zoop
+WebSite: https://zachy.cc
+SourceCode: https://github.com/zoop-dev/pulse
+IssueTracker: https://github.com/zoop-dev/pulse/issues
+
+AutoName: Pulse
+
+RepoType: git
+Repo: https://github.com/zoop-dev/pulse.git
+
+Builds:
+  - versionName: 0.98.0
+    versionCode: 257
+    commit: 0.98.0
+    subdir: app
+    gradle:
+      - mainline
+  - versionName: 0.99.0
+    versionCode: 258
+    commit: 0.99.0
+    subdir: app
+    gradle:
+      - mainline
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^[0-9.]+$
+CurrentVersion: 0.99.0
+CurrentVersionCode: 258

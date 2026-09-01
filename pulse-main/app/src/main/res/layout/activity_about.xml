@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pulse: About screen -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/pulse_bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingHorizontal="28dp"
+        android:paddingTop="36dp"
+        android:paddingBottom="36dp">
+
+        <ImageView
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:background="@drawable/pulse_avatar_ring"
+            android:padding="14dp"
+            app:srcCompat="@drawable/ic_launcher_foreground"
+            android:contentDescription="@string/app_name" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/app_name"
+            android:textColor="@color/pulse_text"
+            android:textStyle="bold"
+            android:fontFamily="@font/unbounded"
+            android:textSize="34sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pulse_drawer_subtitle"
+            android:textColor="@color/pulse_neon_cyan"
+            android:textStyle="bold"
+            android:letterSpacing="0.06"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/about_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:textColor="@color/pulse_text_dim"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/about_hash"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/pulse_text_dim"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center"
+            android:text="@string/pulse_about_blurb"
+            android:textColor="@color/pulse_text"
+            android:lineSpacingExtra="3dp"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/about_links"
+            android:textColor="?attr/pulseAccent"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/links1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/homepage_url"
+            android:textColor="@color/pulse_text_dim"
+            android:textColorLink="?attr/pulseAccent"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/links2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/codeberg_url"
+            android:textColor="@color/pulse_text_dim"
+            android:textColorLink="?attr/pulseAccent"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/links3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/fdroid_url"
+            android:textColor="@color/pulse_text_dim"
+            android:textColorLink="?attr/pulseAccent"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/links4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/upstream_url"
+            android:textColor="@color/pulse_text_dim"
+            android:textColorLink="?attr/pulseAccent"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/showLicenses"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/open_source_licenses"
+            android:textColor="?attr/pulseAccent"
+            app:strokeColor="@color/pulse_card_alt"
+            style="@style/Widget.Material3.Button.OutlinedButton" />
+
+    </LinearLayout>
+</ScrollView>

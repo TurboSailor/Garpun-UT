@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pulse: customizable home-screen widget (3 configurable stat slots) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/alarm_list_top_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/pulse_widget_bg"
+    android:padding="12dp"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/todaywidget_header_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="10dp">
+
+        <ImageView
+            android:id="@+id/todaywidget_header_icon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_notification"
+            android:contentDescription="@string/icon_placeholder" />
+
+        <TextView
+            android:id="@+id/todaywidget_device_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/app_name"
+            android:textColor="@color/pulse_text"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/todaywidget_battery_icon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:backgroundTint="@color/pulse_neon_cyan"
+            android:background="@drawable/ic_battery_full"
+            android:contentDescription="@string/icon_placeholder" />
+
+        <TextView
+            android:id="@+id/todaywidget_device_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/pulse_neon_cyan"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+
+        <ImageView
+            android:id="@+id/todaywidget_refresh"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="10dp"
+            android:src="@drawable/ic_refresh"
+            android:tint="@color/pulse_text_dim"
+            android:contentDescription="@string/icon_placeholder" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/todaywidget_bottom_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <!-- Slot 0 -->
+        <LinearLayout
+            android:id="@+id/pulse_w0"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/pulse_w0_icon"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:backgroundTint="@color/pulse_neon_cyan"
+                android:background="@drawable/ic_steps"
+                android:contentDescription="@string/icon_placeholder" />
+
+            <TextView
+                android:id="@+id/pulse_w0_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/pulse_text"
+                android:textStyle="bold"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/pulse_w0_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="11sp" />
+
+            <ProgressBar
+                android:id="@+id/pulse_w0_prog"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="5dp"
+                android:progressTint="@color/pulse_neon"
+                android:progressBackgroundTint="@color/pulse_card_alt" />
+        </LinearLayout>
+
+        <!-- Slot 1 -->
+        <LinearLayout
+            android:id="@+id/pulse_w1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/pulse_w1_icon"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:backgroundTint="@color/pulse_neon_cyan"
+                android:background="@drawable/ic_map"
+                android:contentDescription="@string/icon_placeholder" />
+
+            <TextView
+                android:id="@+id/pulse_w1_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/pulse_text"
+                android:textStyle="bold"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/pulse_w1_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="11sp" />
+
+            <ProgressBar
+                android:id="@+id/pulse_w1_prog"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="5dp"
+                android:progressTint="@color/pulse_neon"
+                android:progressBackgroundTint="@color/pulse_card_alt" />
+        </LinearLayout>
+
+        <!-- Slot 2 -->
+        <LinearLayout
+            android:id="@+id/pulse_w2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/pulse_w2_icon"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:backgroundTint="@color/pulse_neon_cyan"
+                android:background="@drawable/ic_nights_stay"
+                android:contentDescription="@string/icon_placeholder" />
+
+            <TextView
+                android:id="@+id/pulse_w2_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/pulse_text"
+                android:textStyle="bold"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/pulse_w2_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/pulse_text_dim"
+                android:textSize="11sp" />
+
+            <ProgressBar
+                android:id="@+id/pulse_w2_prog"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="5dp"
+                android:progressTint="@color/pulse_neon"
+                android:progressBackgroundTint="@color/pulse_card_alt" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

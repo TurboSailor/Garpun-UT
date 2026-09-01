@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string translatable="false" name="pebble_content_provider">cc.zachy.pulse.provider</string>
+    <string translatable="false" name="app_name">Pulse</string>
+    <string translatable="false" name="title_activity_controlcenter">Pulse</string>
+    <string translatable="false" name="about_activity_title">About Pulse</string>
+    <string translatable="false" name="about_description">A Garmin watch companion that keeps everything on your phone — no account, no vendor app, no cloud. Built on Gadgetbridge.</string>
+    <string translatable="false" name="gadgetbridge_running">Pulse running</string>
+</resources>

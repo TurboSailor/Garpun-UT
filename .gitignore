@@ -1,0 +1,16 @@
+# Build output
+pulse-ut/build/
+pulse-ut/backend/bin/
+*.click
+
+# Android build output from the reference project
+pulse-main/build/
+pulse-main/app/build/
+pulse-main/.gradle/
+pulse-main/local.properties
+pulse-main/*/build/
+
+# Editors and OS
+.DS_Store
+*.swp
+.idea/workspace.xml

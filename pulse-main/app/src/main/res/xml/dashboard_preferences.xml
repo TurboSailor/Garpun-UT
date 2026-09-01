@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pulse: slimmed dashboard settings. The stock Gadgetbridge dashboard-widget
+     toggles are dead here (Pulse renders its own Today home), so this surfaces the
+     real customization: the drag-and-drop layout editor and the hero-ring metric. -->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:key="pref_key_dashboard_general"
+        android:title="@string/bottom_nav_dashboard"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:icon="@drawable/ic_dashboard"
+            android:key="pref_dashboard_edit_layout"
+            android:title="@string/pulse_dashboard_edit_layout"
+            android:summary="@string/pulse_dashboard_edit_layout_desc" />
+
+        <ListPreference
+            android:icon="@drawable/ic_run_circle"
+            android:defaultValue="steps"
+            android:entries="@array/pulse_ring_metric_entries"
+            android:entryValues="@array/pulse_ring_metric_values"
+            android:key="pulse_ring_metric"
+            android:title="@string/pulse_dashboard_ring"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>
