@@ -2,6 +2,7 @@ import QtQuick 2.12
 import Ubuntu.Components 1.3
 import "../theme"
 import "../store"
+import "../js/I18n.js" as I18n
 
 // Modal only because BlueZ genuinely blocks on the answer. Handles both
 // pairing kinds the daemon can report.
@@ -46,7 +47,7 @@ Item {
             spacing: Pulse.l
 
             Label {
-                text: root.needsEntry ? "Enter the code shown on the watch" : "Confirm pairing"
+                text: root.needsEntry ? I18n.t("pairing.enter_code") : I18n.t("pairing.confirm")
                 color: Pulse.text
                 font.family: Pulse.face
                 font.pixelSize: Pulse.subtitle
@@ -151,13 +152,13 @@ Item {
                 spacing: Pulse.m
 
                 PillButton {
-                    text: "Cancel"
+                    text: I18n.t("action.cancel")
                     kind: "ghost"
                     onClicked: Store.replyPairing({ cancel: true })
                 }
 
                 PillButton {
-                    text: root.needsEntry ? "Pair" : "Confirm"
+                    text: root.needsEntry ? I18n.t("action.pair") : I18n.t("action.confirm")
                     kind: "primary"
                     enabledLook: !root.needsEntry || root.entry.length === 6
                     onClicked: {

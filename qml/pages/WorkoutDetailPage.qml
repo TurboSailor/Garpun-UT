@@ -5,6 +5,7 @@ import "../store"
 import "../components"
 import "../js/Api.js" as Api
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 Item {
     id: page
@@ -136,7 +137,7 @@ Item {
                         font.weight: Font.Light
                     }
                     Label {
-                        text: "duration"
+                        text: I18n.isRu() ? "длительность" : "duration"
                         color: Pulse.textDim
                         font.family: Pulse.face
                         font.pixelSize: Pulse.caption
@@ -167,7 +168,7 @@ Item {
         // ---- route ---------------------------------------------------------
         SectionTitle {
             width: parent.width
-            text: "Route"
+            text: I18n.t("workout_detail.route")
             visible: routeMap.points > 1
         }
 
@@ -187,7 +188,7 @@ Item {
         // ---- summary --------------------------------------------------------
         SectionTitle {
             width: parent.width
-            text: "Summary"
+            text: I18n.t("workout_detail.summary")
             visible: page.summaryEntries.length > 0
         }
 
@@ -233,7 +234,7 @@ Item {
         // ---- traces ------------------------------------------------------
         SectionTitle {
             width: parent.width
-            text: "Traces"
+            text: I18n.t("workout_detail.traces")
             visible: page.track.length > 1
         }
 
@@ -244,14 +245,14 @@ Item {
 
             Repeater {
                 model: [
-                    { field: "heartRate", label: "Heart rate", unit: "bpm", hue: Pulse.ringHr, dec: 0 },
+                    { field: "heartRate", label: I18n.t("metric.heart_rate"), unit: "bpm", hue: Pulse.ringHr, dec: 0 },
                     page.footSport
-                        ? { field: "speed", label: "Pace", unit: "min/" + Fmt.distanceUnit(Store.settings.units),
+                        ? { field: "speed", label: I18n.t("workout_detail.pace"), unit: "min/" + Fmt.distanceUnit(Store.settings.units),
                             hue: Pulse.accent, dec: 1 }
-                        : { field: "speed", label: "Speed", unit: page.speedUnit, hue: Pulse.accent, dec: 1 },
-                    { field: "altitude", label: "Altitude", unit: "m", hue: Pulse.mint, dec: 0 },
-                    { field: "cadence", label: "Cadence", unit: "spm", hue: Pulse.purple, dec: 0 },
-                    { field: "power", label: "Power", unit: "W", hue: Pulse.ringCal, dec: 0 }
+                        : { field: "speed", label: I18n.t("workout_detail.speed"), unit: page.speedUnit, hue: Pulse.accent, dec: 1 },
+                    { field: "altitude", label: I18n.t("workout_detail.altitude"), unit: "m", hue: Pulse.mint, dec: 0 },
+                    { field: "cadence", label: I18n.t("workout_detail.cadence"), unit: "spm", hue: Pulse.purple, dec: 0 },
+                    { field: "power", label: I18n.t("workout_detail.power"), unit: "W", hue: Pulse.ringCal, dec: 0 }
                 ]
 
                 delegate: Card {
@@ -312,9 +313,9 @@ Item {
                 width: parent.width
                 visible: page.error.length > 0
                 glyph: "close"
-                title: "Could not load this workout"
+                title: I18n.t("workout_detail.failed_title")
                 hint: page.error
-                action: "Retry"
+                action: I18n.t("action.retry")
                 onActionTriggered: page.load()
             }
 
@@ -322,8 +323,8 @@ Item {
                 width: parent.width
                 visible: !page.loading && page.error.length === 0 && page.track.length === 0
                 glyph: "route"
-                title: "No detailed trace"
-                hint: "This activity was stored as a summary only \u2014 the watch did not send per-second samples."
+                title: I18n.t("workout_detail.no_trace_title")
+                hint: I18n.t("workout_detail.no_trace_hint")
             }
         }
     }

@@ -1,4 +1,5 @@
 .pragma library
+.import "I18n.js" as I18n
 
 var EMPTY = "\u2013"; // stats_empty_value
 
@@ -25,13 +26,17 @@ function thousands(n) {
 // metres -> "5.2 km" / "3.2 mi"
 function distance(metres, unitSystem) {
     if (!has(metres)) return EMPTY;
+    var isRu = I18n.isRu();
+    var kmU = isRu ? " км" : " km";
+    var mU = isRu ? " м" : " m";
+    var miU = isRu ? " ми" : " mi";
     if (unitSystem === "imperial") {
         var mi = metres / 1609.344;
-        return (mi < 10 ? mi.toFixed(2) : mi.toFixed(1)) + " mi";
+        return (mi < 10 ? mi.toFixed(2) : mi.toFixed(1)) + miU;
     }
-    if (metres < 1000) return Math.round(metres) + " m";
+    if (metres < 1000) return Math.round(metres) + mU;
     var km = metres / 1000;
-    return (km < 10 ? km.toFixed(2) : km.toFixed(1)) + " km";
+    return (km < 10 ? km.toFixed(2) : km.toFixed(1)) + kmU;
 }
 
 function distanceShort(metres, unitSystem) {
@@ -41,16 +46,21 @@ function distanceShort(metres, unitSystem) {
 }
 
 function distanceUnit(unitSystem) {
-    return unitSystem === "imperial" ? "mi" : "km";
+    var isRu = I18n.isRu();
+    if (unitSystem === "imperial") return isRu ? "ми" : "mi";
+    return isRu ? "км" : "km";
 }
 
-// minutes -> "7h 12m" / "48m"
+// minutes -> "7h 12m" / "48m" (or "7 ч 12 мин" in RU)
 function duration(mins) {
     if (!has(mins) || mins <= 0) return EMPTY;
+    var isRu = I18n.isRu();
     var h = Math.floor(mins / 60);
     var m = Math.round(mins % 60);
-    if (h <= 0) return m + "m";
-    return h + "h " + (m > 0 ? m + "m" : "");
+    var hU = isRu ? " ч " : "h ";
+    var mU = isRu ? " мин" : "m";
+    if (h <= 0) return m + mU;
+    return h + hU + (m > 0 ? m + mU : "");
 }
 
 function durationTrim(mins) {
@@ -113,18 +123,35 @@ function shiftIso(s, days) {
     return isoDate(d);
 }
 
-var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-var DAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
+var MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var MONTHS_RU = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+
+var DAYS_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var DAYS_RU = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+var DAYS_SHORT_EN = ["S", "M", "T", "W", "T", "F", "S"];
+var DAYS_SHORT_RU = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+
+function months() {
+    return I18n.isRu() ? MONTHS_RU : MONTHS_EN;
+}
+
+function days() {
+    return I18n.isRu() ? DAYS_RU : DAYS_EN;
+}
+
+function daysShort() {
+    return I18n.isRu() ? DAYS_SHORT_RU : DAYS_SHORT_EN;
+}
 
 function prettyDate(iso) {
     if (!has(iso)) return "";
     var d = parseIso(iso);
     var now = new Date();
-    if (isoDate(now) === iso) return "Today";
+    if (isoDate(now) === iso) return I18n.t("date.today");
     now.setDate(now.getDate() - 1);
-    if (isoDate(now) === iso) return "Yesterday";
-    return DAYS[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate();
+    if (isoDate(now) === iso) return I18n.t("date.yesterday");
+    return days()[d.getDay()] + ", " + d.getDate() + " " + months()[d.getMonth()];
 }
 
 function timeOfDay(ms) {
@@ -135,33 +162,33 @@ function timeOfDay(ms) {
 
 function dayShort(ms) {
     if (!has(ms) || ms <= 0) return "";
-    return DAYS_SHORT[new Date(ms).getDay()];
+    return daysShort()[new Date(ms).getDay()];
 }
 
 function dateShort(ms) {
     if (!has(ms) || ms <= 0) return EMPTY;
     var d = new Date(ms);
-    return MONTHS[d.getMonth()] + " " + d.getDate();
+    return d.getDate() + " " + months()[d.getMonth()];
 }
 
 function relative(ms) {
-    if (!has(ms) || ms <= 0) return "never";
+    if (!has(ms) || ms <= 0) return I18n.t("date.never");
     var diff = Date.now() - ms;
-    if (diff < 0) return "just now";
+    if (diff < 0) return I18n.t("date.just_now");
     var mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return mins + " min ago";
+    if (mins < 1) return I18n.t("date.just_now");
+    if (mins < 60) return I18n.t("date.mins_ago", [mins]);
     var hrs = Math.floor(mins / 60);
-    if (hrs < 24) return hrs + "h ago";
-    var days = Math.floor(hrs / 24);
-    if (days < 7) return days + "d ago";
+    if (hrs < 24) return I18n.t("date.hours_ago", [hrs]);
+    var daysCount = Math.floor(hrs / 24);
+    if (daysCount < 7) return I18n.t("date.days_ago", [daysCount]);
     return dateShort(ms);
 }
 
 function greeting(hour) {
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
+    if (hour < 12) return I18n.t("greeting.morning");
+    if (hour < 18) return I18n.t("greeting.afternoon");
+    return I18n.t("greeting.evening");
 }
 
 function signed(v, digits) {
@@ -184,41 +211,41 @@ function trimNum(v, digits) {
 // Garmin ActivityKind -> readable label (docs §1.5 code table).
 function activityName(kind) {
     switch (kind) {
-    case 0x10: return "Run";
-    case 0x20: return "Walk";
-    case 0x40: return "Swim";
-    case 0x80: return "Ride";
-    case 0x100: return "Treadmill";
-    case 0x200: return "Exercise";
-    case 0x1: return "Activity";
-    case 0x04000000: return "Navigate";
-    case 0x04000001: return "Indoor track run";
+    case 0x10: return I18n.t("sport.run");
+    case 0x20: return I18n.t("sport.walk");
+    case 0x40: return I18n.t("sport.swim");
+    case 0x80: return I18n.t("sport.ride");
+    case 0x100: return I18n.t("sport.treadmill");
+    case 0x200: return I18n.t("sport.exercise");
+    case 0x1: return I18n.t("sport.activity");
+    case 0x04000000: return I18n.t("sport.navigate");
+    case 0x04000001: return I18n.t("sport.indoor_track");
     }
-    return "Workout";
+    return I18n.t("sport.workout");
 }
 
 // FIT sport enum -> label, covers what a Forerunner actually records.
 function sportName(sport) {
     switch (sport) {
-    case 0: return "Generic";
-    case 1: return "Run";
-    case 2: return "Ride";
-    case 4: return "Swim";
-    case 5: return "Basketball";
-    case 6: return "Soccer";
-    case 7: return "Tennis";
-    case 9: return "Row";
-    case 11: return "Walk";
-    case 13: return "Alpine ski";
-    case 15: return "Row";
-    case 17: return "Hike";
-    case 18: return "Multisport";
-    case 25: return "Strength";
-    case 26: return "Cardio";
-    case 41: return "Paddling";
-    case 43: return "Yoga";
+    case 0: return I18n.t("sport.generic");
+    case 1: return I18n.t("sport.run");
+    case 2: return I18n.t("sport.ride");
+    case 4: return I18n.t("sport.swim");
+    case 5: return I18n.t("sport.basketball");
+    case 6: return I18n.t("sport.soccer");
+    case 7: return I18n.t("sport.tennis");
+    case 9: return I18n.t("sport.row");
+    case 11: return I18n.t("sport.walk");
+    case 13: return I18n.t("sport.alpine_ski");
+    case 15: return I18n.t("sport.row");
+    case 17: return I18n.t("sport.hike");
+    case 18: return I18n.t("sport.multisport");
+    case 25: return I18n.t("sport.strength");
+    case 26: return I18n.t("sport.cardio");
+    case 41: return I18n.t("sport.paddling");
+    case 43: return I18n.t("sport.yoga");
     }
-    return "Workout";
+    return I18n.t("sport.workout");
 }
 
 function workoutTitle(w) {

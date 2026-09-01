@@ -4,6 +4,7 @@ import "../theme"
 import "../store"
 import "../components"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 Item {
     id: page
@@ -98,7 +99,7 @@ Item {
                         }
                         Label {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: "of " + Fmt.thousands(page.stepsGoal)
+                            text: (I18n.isRu() ? "из " : "of ") + Fmt.thousands(page.stepsGoal)
                             color: Pulse.textDim
                             font.family: Pulse.face
                             font.pixelSize: Pulse.caption
@@ -115,7 +116,7 @@ Item {
                     spacing: Pulse.m
 
                     Label {
-                        text: "STEPS"
+                        text: I18n.t("today.steps")
                         color: Pulse.textDim
                         font.family: Pulse.face
                         font.pixelSize: Pulse.micro
@@ -131,11 +132,10 @@ Item {
                         font.pixelSize: Pulse.body
                         lineHeight: 1.2
                         text: {
-                            if (page.waiting) return "Reading today\u2026";
-                            if (page.steps <= 0) return "No steps recorded yet today.";
-                            if (page.stepFactor >= 1) return "Goal beaten by " +
-                                Fmt.thousands(page.steps - page.stepsGoal) + " steps.";
-                            return Fmt.thousands(page.stepsGoal - page.steps) + " steps to go.";
+                            if (page.waiting) return I18n.t("today.reading");
+                            if (page.steps <= 0) return I18n.t("today.no_steps");
+                            if (page.stepFactor >= 1) return I18n.t("today.goal_beaten", [Fmt.thousands(page.steps - page.stepsGoal)]);
+                            return I18n.t("today.steps_to_go", [Fmt.thousands(page.stepsGoal - page.steps)]);
                         }
                     }
 
@@ -163,7 +163,7 @@ Item {
                             spacing: 0
 
                             Label {
-                                text: page.sub("streak", "current") + (page.sub("streak", "current") === 1 ? " day" : " days")
+                                text: page.sub("streak", "current") + (I18n.isRu() ? " дн" : (page.sub("streak", "current") === 1 ? " day" : " days"))
                                 color: Pulse.text
                                 font.family: Pulse.face
                                 font.pixelSize: Pulse.subtitle
@@ -171,9 +171,8 @@ Item {
                             }
                             Label {
                                 text: page.sub("streak", "best") > 0
-                                      ? "best " + page.sub("streak", "best")
-                                      : "start a streak"
-                                color: Pulse.textDim
+                                      ? (I18n.isRu() ? "рекорд " : "best ") + page.sub("streak", "best")
+                                      : (I18n.isRu() ? "начните серию" : "start a streak")
                                 font.family: Pulse.face
                                 font.pixelSize: Pulse.micro
                             }
@@ -194,51 +193,51 @@ Item {
 
             MetricTile {
                 width: tiles.cell
-                label: "Calories"
+                label: Pulse.metricLabel("calories")
                 glyph: "flame"
                 hue: Pulse.ringHr
                 loading: page.waiting
                 value: Fmt.thousands(page.num("activeCalories", 0))
                 unit: "kcal"
                 caption: page.num("restingCalories", 0) > 0
-                         ? "+" + Fmt.thousands(page.num("restingCalories", 0)) + " resting" : ""
+                         ? "+" + Fmt.thousands(page.num("restingCalories", 0)) + (I18n.isRu() ? " покой" : " resting") : ""
                 factor: page.num("activeCalories", 0) / page.goal("activeCalories")
             }
 
             MetricTile {
                 width: tiles.cell
-                label: "Distance"
+                label: Pulse.metricLabel("distance")
                 glyph: "route"
                 hue: Pulse.accent
                 loading: page.waiting
                 value: Fmt.distanceShort(page.num("distanceM", 0), Store.settings.units)
                 unit: Fmt.distanceUnit(Store.settings.units)
-                caption: "goal " + Fmt.distance(page.goal("distanceM"), Store.settings.units)
+                caption: (I18n.isRu() ? "цель " : "goal ") + Fmt.distance(page.goal("distanceM"), Store.settings.units)
                 factor: page.num("distanceM", 0) / page.goal("distanceM")
             }
 
             MetricTile {
                 width: tiles.cell
-                label: "Active time"
+                label: Pulse.metricLabel("activetime")
                 glyph: "bolt"
                 hue: Pulse.mint
                 loading: page.waiting
                 value: page.num("activeMinutes", 0) > 0 ? Fmt.durationTrim(page.num("activeMinutes", 0)) : "\u2013"
-                caption: "intensity " + page.sub("intensityMinutes", "today") +
-                         " \u00b7 week " + page.sub("intensityMinutes", "week")
+                caption: (I18n.isRu() ? "интенс. " : "intensity ") + page.sub("intensityMinutes", "today") +
+                         " \u00b7 " + (I18n.isRu() ? "неделя " : "week ") + page.sub("intensityMinutes", "week")
                 factor: page.num("activeMinutes", 0) / page.goal("activeMinutes")
             }
 
             MetricTile {
                 width: tiles.cell
-                label: "Heart rate"
+                label: Pulse.metricLabel("heart_rate")
                 glyph: "pulse"
                 hue: Pulse.ringHr
                 loading: page.waiting
                 value: page.sub("heartRate", "latest") > 0 ? "" + page.sub("heartRate", "latest") : "\u2013"
                 unit: "bpm"
                 caption: page.sub("heartRate", "resting") > 0
-                         ? "resting " + page.sub("heartRate", "resting")
+                         ? (I18n.isRu() ? "покой " : "resting ") + page.sub("heartRate", "resting")
                          : (page.sub("heartRate", "max") > 0
                             ? page.sub("heartRate", "min") + "\u2013" + page.sub("heartRate", "max") : "")
                 factor: Pulse.metricFactor("heart_rate", page.sub("heartRate", "latest"))
@@ -247,27 +246,27 @@ Item {
 
             MetricTile {
                 width: tiles.cell
-                label: "Body Battery"
+                label: Pulse.metricLabel("body_energy")
                 glyph: "battery"
                 hue: Pulse.mint
                 loading: page.waiting
                 value: page.sub("bodyEnergy", "latest") > 0 ? "" + page.sub("bodyEnergy", "latest") : "\u2013"
                 caption: page.sub("bodyEnergy", "max") > 0
-                         ? "range " + page.sub("bodyEnergy", "min") + "\u2013" + page.sub("bodyEnergy", "max") : ""
+                         ? (I18n.isRu() ? "диапазон " : "range ") + page.sub("bodyEnergy", "min") + "\u2013" + page.sub("bodyEnergy", "max") : ""
                 factor: page.sub("bodyEnergy", "latest") / 100
                 onClicked: page.openTab("health")
             }
 
             MetricTile {
                 width: tiles.cell
-                label: "Sleep"
+                label: Pulse.metricLabel("sleep")
                 glyph: "moon"
                 hue: Pulse.purple
                 loading: page.waiting
                 value: page.num("sleepMinutes", 0) > 0 ? Fmt.durationTrim(page.num("sleepMinutes", 0)) : "\u2013"
                 caption: page.num("sleepScore", 0) > 0
-                         ? "score " + page.num("sleepScore", 0) + " \u00b7 " + Pulse.sleepQuality(page.num("sleepScore", 0))
-                         : "no night recorded"
+                         ? (I18n.isRu() ? "оценка " : "score ") + page.num("sleepScore", 0) + " \u00b7 " + Pulse.sleepQuality(page.num("sleepScore", 0))
+                         : I18n.t("sleep.no_night_title")
                 factor: page.num("sleepMinutes", 0) / page.goal("sleepMinutes")
                 onClicked: page.openTab("sleep")
             }
@@ -276,8 +275,8 @@ Item {
         // ---- recent workouts ---------------------------------------------
         SectionTitle {
             width: parent.width
-            text: "Recent workouts"
-            action: Store.workouts && Store.workouts.length > 0 ? "See all" : ""
+            text: I18n.t("today.recent_workouts")
+            action: Store.workouts && Store.workouts.length > 0 ? I18n.t("action.see_all") : ""
             onActionTriggered: page.openTab("fitness")
         }
 
@@ -290,10 +289,10 @@ Item {
                 width: parent.width
                 visible: !Store.workouts || Store.workouts.length === 0
                 glyph: "timer"
-                title: Store.online ? "No workouts yet" : "Waiting for the daemon"
+                title: Store.online ? I18n.t("today.no_workouts_title") : I18n.t("today.daemon_wait_title")
                 hint: Store.online
-                      ? "Record an activity on the watch, then sync to see it here."
-                      : "Pulse cannot reach pulsed on 127.0.0.1:21830."
+                      ? I18n.t("today.no_workouts_hint")
+                      : I18n.t("today.daemon_unreachable")
             }
 
             Repeater {

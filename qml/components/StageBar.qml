@@ -1,6 +1,7 @@
 import QtQuick 2.12
 import Ubuntu.Components 1.3
 import "../theme"
+import "../js/I18n.js" as I18n
 
 // Proportional split of the night. Segments are separate pills so the ratio
 // stays readable even when one stage is a sliver.
@@ -70,7 +71,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Label {
-                    text: modelData.charAt(0).toUpperCase() + modelData.slice(1)
+                    text: I18n.t("sleep." + modelData)
                     color: Pulse.textDim
                     font.family: Pulse.face
                     font.pixelSize: Pulse.micro

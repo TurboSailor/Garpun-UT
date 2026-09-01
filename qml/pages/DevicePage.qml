@@ -4,6 +4,7 @@ import "../theme"
 import "../store"
 import "../components"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 Item {
     id: page
@@ -33,7 +34,7 @@ Item {
         PageHead {
             width: parent.width
             kicker: Store.daemonVersion.length > 0 ? "pulsed " + Store.daemonVersion : "pulsed"
-            title: "Device"
+            title: I18n.t("device.title")
             trailingGlyph: "bell"
             trailingBadge: Store.notifications ? Store.notifications.length : 0
             onTrailing: page.openNotifications()
@@ -47,7 +48,7 @@ Item {
             spacing: Pulse.s
 
             PillButton {
-                text: Store.connected ? "Disconnect" : "Connect"
+                text: Store.connected ? I18n.t("action.disconnect") : I18n.t("action.connect")
                 glyph: "bluetooth"
                 kind: Store.connected ? "ghost" : "primary"
                 enabledLook: Store.online && !!Store.device
@@ -58,7 +59,7 @@ Item {
             }
 
             PillButton {
-                text: Store.syncing ? "Syncing" : "Sync"
+                text: Store.syncing ? I18n.t("action.syncing") : I18n.t("action.sync")
                 glyph: "sync"
                 busy: Store.syncing
                 enabledLook: Store.connected && !Store.syncing
@@ -66,7 +67,7 @@ Item {
             }
 
             PillButton {
-                text: Store.ringing ? "Stop ringing" : "Find my watch"
+                text: Store.ringing ? I18n.t("action.stop_ringing") : I18n.t("action.find_watch")
                 glyph: Store.ringing ? "close" : "search"
                 kind: Store.ringing ? "danger" : "ghost"
                 enabledLook: Store.connected
@@ -83,7 +84,7 @@ Item {
             visible: Store.syncing
 
             Label {
-                text: "Transferring files"
+                text: I18n.t("device.transferring")
                 color: Pulse.text
                 font.family: Pulse.face
                 font.pixelSize: Pulse.body
@@ -104,9 +105,9 @@ Item {
                 text: {
                     var p = Store.progress;
                     if (!p) return "";
-                    return "File " + (p.fileIndex + 1) + " \u00b7 " + Fmt.thousands(p.received) +
-                           " of " + Fmt.thousands(p.total) + " bytes \u00b7 " +
-                           Fmt.thousands(p.remaining) + " files left";
+                    return I18n.t("device.files_progress", [
+                        p.fileIndex + 1, Fmt.thousands(p.received), Fmt.thousands(p.total), Fmt.thousands(p.remaining)
+                    ]);
                 }
                 color: Pulse.textDim
                 font.family: Pulse.face
@@ -115,7 +116,7 @@ Item {
         }
 
         // ---- paired ----------------------------------------------------
-        SectionTitle { width: parent.width; text: "Paired" }
+        SectionTitle { width: parent.width; text: I18n.t("device.paired_section") }
 
         Card {
             width: parent.width
@@ -126,10 +127,10 @@ Item {
                 width: parent.width
                 visible: page.paired.length === 0
                 glyph: "watch"
-                title: Store.online ? "No watch paired yet" : "Pulse daemon offline"
+                title: Store.online ? I18n.t("device.no_watch_paired") : I18n.t("status.daemon_offline")
                 hint: Store.online
-                      ? "Put the Garmin in pairing mode, then scan below."
-                      : "Start pulsed \u2014 Bluetooth is handled by the daemon, not this app."
+                      ? I18n.t("device.pair_hint")
+                      : I18n.t("device.daemon_offline_hint")
             }
 
             Repeater {
@@ -148,8 +149,8 @@ Item {
         // ---- scan ------------------------------------------------------
         SectionTitle {
             width: parent.width
-            text: "Nearby"
-            action: Store.scanning ? "Stop" : "Scan"
+            text: I18n.t("device.nearby_section")
+            action: Store.scanning ? I18n.t("action.stop") : I18n.t("action.scan")
             onActionTriggered: {
                 if (Store.scanning) Store.stopScan();
                 else Store.startScan();
@@ -165,11 +166,11 @@ Item {
                 width: parent.width
                 visible: page.found.length === 0
                 glyph: "search"
-                title: Store.scanning ? "Scanning\u2026" : "Nothing found yet"
+                title: Store.scanning ? I18n.t("device.scanning") : I18n.t("device.nothing_found")
                 hint: Store.scanning
-                      ? "Keep the watch awake and close to the phone."
-                      : "Tap Scan and hold the watch nearby. Garmin devices are flagged automatically."
-                action: Store.scanning || !Store.online ? "" : "Scan"
+                      ? I18n.t("device.keep_awake_hint")
+                      : I18n.t("device.scan_hint")
+                action: Store.scanning || !Store.online ? "" : I18n.t("action.scan")
                 onActionTriggered: Store.startScan()
             }
 
@@ -185,13 +186,13 @@ Item {
         }
 
         // ---- appearance -------------------------------------------------
-        SectionTitle { width: parent.width; text: "Appearance" }
+        SectionTitle { width: parent.width; text: I18n.t("device.appearance_section") }
 
         Card {
             width: parent.width
 
             Label {
-                text: "Theme"
+                text: I18n.t("device.theme")
                 color: Pulse.textDim
                 font.family: Pulse.face
                 font.pixelSize: Pulse.caption
@@ -200,16 +201,16 @@ Item {
             Segmented {
                 width: parent.width
                 options: [
-                    { key: "system", label: "System" },
-                    { key: "light", label: "Light" },
-                    { key: "dark", label: "Dark" }
+                    { key: "system", label: I18n.t("device.theme_system") },
+                    { key: "light", label: I18n.t("device.theme_light") },
+                    { key: "dark", label: I18n.t("device.theme_dark") }
                 ]
                 current: page.st.theme
                 onPicked: page.set("theme", key)
             }
 
             Label {
-                text: "Accent"
+                text: I18n.t("device.accent")
                 color: Pulse.textDim
                 font.family: Pulse.face
                 font.pixelSize: Pulse.caption
@@ -262,7 +263,7 @@ Item {
             }
 
             Label {
-                text: "Units"
+                text: I18n.t("device.units")
                 color: Pulse.textDim
                 font.family: Pulse.face
                 font.pixelSize: Pulse.caption
@@ -271,8 +272,8 @@ Item {
             Segmented {
                 width: parent.width
                 options: [
-                    { key: "metric", label: "Metric" },
-                    { key: "imperial", label: "Imperial" }
+                    { key: "metric", label: I18n.t("device.units_metric") },
+                    { key: "imperial", label: I18n.t("device.units_imperial") }
                 ]
                 current: page.st.units
                 onPicked: page.set("units", key)
@@ -280,7 +281,7 @@ Item {
         }
 
         // ---- goals -------------------------------------------------------
-        SectionTitle { width: parent.width; text: "Goals" }
+        SectionTitle { width: parent.width; text: I18n.t("device.goals_section") }
 
         Card {
             width: parent.width
@@ -288,8 +289,8 @@ Item {
             spacing: 0
 
             SettingRow {
-                title: "Steps"
-                subtitle: "Daily target driving the main ring"
+                title: I18n.t("device.goal_steps")
+                subtitle: I18n.isRu() ? "Дневная цель для кольца активности" : "Daily target driving the main ring"
                 glyph: "steps"
                 Stepper {
                     value: page.st.stepsGoal
@@ -302,8 +303,8 @@ Item {
             }
 
             SettingRow {
-                title: "Sleep"
-                subtitle: "Hours and minutes per night"
+                title: I18n.t("device.goal_sleep")
+                subtitle: I18n.isRu() ? "Количество минут сна за ночь" : "Hours and minutes per night"
                 glyph: "moon"
                 Stepper {
                     value: page.st.sleepGoalMinutes
@@ -316,7 +317,7 @@ Item {
             }
 
             SettingRow {
-                title: "Active calories"
+                title: I18n.t("device.goal_calories")
                 glyph: "flame"
                 Stepper {
                     value: page.st.activeCaloriesGoal
@@ -329,7 +330,7 @@ Item {
             }
 
             SettingRow {
-                title: "Distance"
+                title: I18n.t("device.goal_distance")
                 glyph: "route"
                 Stepper {
                     value: page.st.distanceGoalM
@@ -342,7 +343,7 @@ Item {
             }
 
             SettingRow {
-                title: "Active minutes"
+                title: I18n.t("device.goal_active_mins")
                 glyph: "bolt"
                 Stepper {
                     value: page.st.activeMinutesGoal
@@ -355,8 +356,8 @@ Item {
             }
 
             SettingRow {
-                title: "Intensity minutes"
-                subtitle: "Moderate + 2\u00d7 vigorous, per day"
+                title: I18n.t("device.goal_intensity")
+                subtitle: I18n.isRu() ? "Умеренная + 2× высокая нагрузка" : "Moderate + 2\u00d7 vigorous, per day"
                 glyph: "bolt"
                 divider: false
                 Stepper {
@@ -371,7 +372,7 @@ Item {
         }
 
         // ---- behaviour --------------------------------------------------
-        SectionTitle { width: parent.width; text: "Watch behaviour" }
+        SectionTitle { width: parent.width; text: I18n.t("device.integrations_section") }
 
         Card {
             width: parent.width
@@ -379,8 +380,8 @@ Item {
             spacing: 0
 
             SettingRow {
-                title: "Forward notifications"
-                subtitle: "Send desktop notifications to the watch"
+                title: I18n.t("device.notifications_title")
+                subtitle: I18n.t("device.notifications_sub")
                 glyph: "bell"
                 Toggle {
                     checked: page.st.notificationsEnabled
@@ -389,8 +390,8 @@ Item {
             }
 
             SettingRow {
-                title: "Include Waydroid apps"
-                subtitle: "Also forward Android notifications from the container"
+                title: I18n.t("device.waydroid_title")
+                subtitle: I18n.t("device.waydroid_sub")
                 glyph: "android"
                 Toggle {
                     checked: page.st.notifyWaydroid
@@ -399,8 +400,8 @@ Item {
             }
 
             SettingRow {
-                title: "Weather"
-                subtitle: "Answer the watch's weather requests"
+                title: I18n.t("device.weather_title")
+                subtitle: I18n.t("device.weather_sub")
                 glyph: "drop"
                 Toggle {
                     checked: page.st.weatherEnabled
@@ -409,8 +410,8 @@ Item {
             }
 
             SettingRow {
-                title: "Sync time"
-                subtitle: "Set the watch clock on connect"
+                title: I18n.t("device.sync_time_title")
+                subtitle: I18n.t("device.sync_time_sub")
                 glyph: "timer"
                 Toggle {
                     checked: page.st.syncTime
@@ -419,8 +420,8 @@ Item {
             }
 
             SettingRow {
-                title: "Keep files on watch"
-                subtitle: "Do not delete FIT files after download"
+                title: I18n.t("device.keep_files_title")
+                subtitle: I18n.t("device.keep_files_sub")
                 glyph: "desktop"
                 Toggle {
                     checked: page.st.keepFilesOnWatch
@@ -429,8 +430,8 @@ Item {
             }
 
             SettingRow {
-                title: "Any goal counts for streaks"
-                subtitle: "Otherwise only the step goal keeps a streak alive"
+                title: I18n.isRu() ? "Любая цель продлевает серию" : "Any goal counts for streaks"
+                subtitle: I18n.isRu() ? "Иначе серию поддерживает только цель по шагам" : "Otherwise only the step goal keeps a streak alive"
                 glyph: "star"
                 Toggle {
                     checked: page.st.anyGoalStreak
@@ -439,10 +440,10 @@ Item {
             }
 
             SettingRow {
-                title: "Auto sync"
+                title: I18n.isRu() ? "Автосинхронизация" : "Auto sync"
                 subtitle: page.st.autoSyncMinutes > 0
-                          ? "Every " + page.st.autoSyncMinutes + " minutes"
-                          : "Manual only"
+                          ? (I18n.isRu() ? ("Каждые " + page.st.autoSyncMinutes + " мин") : ("Every " + page.st.autoSyncMinutes + " minutes"))
+                          : (I18n.isRu() ? "Только вручную" : "Manual only")
                 glyph: "sync"
                 divider: false
                 Stepper {
@@ -450,7 +451,7 @@ Item {
                     step: 15
                     minimum: 0
                     maximum: 720
-                    display: page.st.autoSyncMinutes > 0 ? page.st.autoSyncMinutes + "m" : "off"
+                    display: page.st.autoSyncMinutes > 0 ? (page.st.autoSyncMinutes + (I18n.isRu() ? " мин" : "m")) : (I18n.isRu() ? "выкл" : "off")
                     onValueRequested: page.set("autoSyncMinutes", value)
                 }
             }

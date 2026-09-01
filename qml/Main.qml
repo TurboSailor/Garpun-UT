@@ -4,6 +4,7 @@ import "theme"
 import "store"
 import "components"
 import "pages"
+import "js/I18n.js" as I18n
 
 MainView {
     id: app
@@ -33,16 +34,17 @@ MainView {
     onToastSeqChanged: toast.show(Store.toastText)
 
     Component.onCompleted: {
+        I18n.detect();
         Pulse.systemDark = systemDark;
         Store.start();
     }
 
     readonly property var tabs: [
-        { key: "today",   label: "Today",   glyph: "steps" },
-        { key: "health",  label: "Health",  glyph: "pulse" },
-        { key: "sleep",   label: "Sleep",   glyph: "moon" },
-        { key: "fitness", label: "Fitness", glyph: "timer" },
-        { key: "device",  label: "Device",  glyph: "watch" }
+        { key: "today",   label: I18n.t("tab.today"),   glyph: "steps" },
+        { key: "health",  label: I18n.t("tab.health"),  glyph: "pulse" },
+        { key: "sleep",   label: I18n.t("tab.sleep"),   glyph: "moon" },
+        { key: "fitness", label: I18n.t("tab.fitness"), glyph: "timer" },
+        { key: "device",  label: I18n.t("tab.device"),  glyph: "watch" }
     ]
 
     property int tab: 0

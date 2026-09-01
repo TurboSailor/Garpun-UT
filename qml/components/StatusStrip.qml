@@ -2,6 +2,7 @@ import QtQuick 2.12
 import Ubuntu.Components 1.3
 import "../theme"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 import "../store"
 
 // Always-visible truth about the link: daemon, watch, battery, last sync.
@@ -53,8 +54,8 @@ Rectangle {
             font.pixelSize: Pulse.body
             font.weight: Font.DemiBold
             color: Pulse.text
-            text: root.daemonDown ? "Pulse daemon offline"
-                : !Store.device ? "No watch paired"
+            text: root.daemonDown ? I18n.t("status.daemon_offline")
+                : !Store.device ? I18n.t("status.no_watch")
                 : (Store.device.name && Store.device.name.length ? Store.device.name : Store.device.address)
         }
 
@@ -65,19 +66,18 @@ Rectangle {
             font.pixelSize: Pulse.caption
             color: Pulse.textDim
             text: {
-                if (root.daemonDown) return "Start pulsed to see your data";
-                if (!Store.device) return "Open Device to scan and pair";
+                if (root.daemonDown) return I18n.t("status.start_daemon");
+                if (!Store.device) return I18n.t("status.open_device_scan");
                 if (Store.syncing) {
                     var p = Store.progress;
                     if (p && p.total > 0)
-                        return "Syncing file " + (p.fileIndex + 1) + " \u00b7 " +
-                               Math.round(100 * p.received / p.total) + "%";
-                    return "Syncing\u2026";
+                        return I18n.t("status.syncing_file", [p.fileIndex + 1, Math.round(100 * p.received / p.total)]);
+                    return I18n.t("status.syncing_ellipsis");
                 }
                 var bits = [];
-                bits.push(Store.connected ? (Store.initialized ? "Connected" : "Connecting\u2026") : "Disconnected");
+                bits.push(Store.connected ? (Store.initialized ? I18n.t("status.connected") : I18n.t("status.connecting")) : I18n.t("status.disconnected"));
                 if (Store.battery >= 0) bits.push(Store.battery + "%");
-                if (Store.device.lastSyncMs > 0) bits.push("synced " + Fmt.relative(Store.device.lastSyncMs));
+                if (Store.device.lastSyncMs > 0) bits.push(I18n.t("status.synced_relative", [Fmt.relative(Store.device.lastSyncMs)]));
                 return bits.join(" \u00b7 ");
             }
         }

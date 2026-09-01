@@ -4,6 +4,7 @@ import "../theme"
 import "../store"
 import "../components"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 Item {
     id: page
@@ -32,8 +33,8 @@ Item {
 
         PageHead {
             width: parent.width
-            kicker: "Trends"
-            title: "Health"
+            kicker: I18n.t("health.kicker")
+            title: I18n.t("health.title")
             trailingGlyph: "sync"
             onTrailing: Store.loadHealth()
         }
@@ -41,9 +42,9 @@ Item {
         Segmented {
             width: parent.width
             options: [
-                { key: "7", label: "7 days" },
-                { key: "14", label: "14 days" },
-                { key: "30", label: "30 days" }
+                { key: "7", label: I18n.t("health.days_7") },
+                { key: "14", label: I18n.t("health.days_14") },
+                { key: "30", label: I18n.t("health.days_30") }
             ]
             current: "" + Store.healthDays
             onPicked: {
@@ -83,11 +84,11 @@ Item {
             EmptyState {
                 width: parent.width
                 glyph: "pulse"
-                title: Store.online ? "No health history yet" : "Pulse daemon offline"
+                title: Store.online ? I18n.t("health.no_history_title") : I18n.t("status.daemon_offline")
                 hint: Store.online
-                      ? "Wear the watch through a day and sync — heart rate, Body Battery, stress, SpO\u2082, HRV and respiration land here."
-                      : "Start pulsed and this page fills in on the next sync."
-                action: Store.online && Store.connected ? "Sync now" : ""
+                      ? I18n.t("health.no_history_hint")
+                      : I18n.t("health.next_sync_hint")
+                action: Store.online && Store.connected ? I18n.t("action.sync_now") : ""
                 onActionTriggered: Store.startSync()
             }
         }
@@ -124,7 +125,7 @@ Item {
         Label {
             width: parent.width
             visible: !page.waiting && page.metrics.length > 0
-            text: "Deltas compare the latest value with the average of the preceding days."
+            text: I18n.t("health.deltas_hint")
             color: Pulse.textDim
             font.family: Pulse.face
             font.pixelSize: Pulse.micro

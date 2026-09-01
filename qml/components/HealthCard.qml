@@ -2,6 +2,7 @@ import QtQuick 2.12
 import Ubuntu.Components 1.3
 import "../theme"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 // One metric from GET /api/health. `headline` gives it the full width and the
 // large type; the compact form is used for the grid below.
@@ -70,7 +71,7 @@ Rectangle {
             spacing: units.dp(2)
 
             Label {
-                text: root.metric ? root.metric.label : ""
+                text: root.key.length ? Pulse.metricLabel(root.key) : (root.metric ? root.metric.label : "")
                 color: Pulse.textDim
                 font.family: Pulse.face
                 font.pixelSize: Pulse.caption
@@ -126,7 +127,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
             }
             Label {
-                text: root.metric ? root.metric.label : ""
+                text: root.key.length ? Pulse.metricLabel(root.key) : (root.metric ? root.metric.label : "")
                 color: Pulse.textDim
                 font.family: Pulse.face
                 font.pixelSize: Pulse.caption
@@ -182,7 +183,7 @@ Rectangle {
         visible: root.series.length <= 1
         anchors.left: spark.left
         anchors.bottom: spark.bottom
-        text: "No history yet"
+        text: I18n.t("metric_detail.no_samples")
         color: Pulse.textDim
         font.family: Pulse.face
         font.pixelSize: Pulse.micro

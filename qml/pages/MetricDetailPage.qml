@@ -4,6 +4,7 @@ import "../theme"
 import "../store"
 import "../components"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 Item {
     id: page
@@ -38,8 +39,8 @@ Item {
         PageHead {
             width: parent.width
             showBack: true
-            kicker: "Last " + Store.healthDays + " days"
-            title: page.metric ? page.metric.label : "Metric"
+            kicker: I18n.t("metric_detail.last_days", [Store.healthDays])
+            title: page.key.length ? Pulse.metricLabel(page.key) : (page.metric ? page.metric.label : "")
             onBack: page.back()
         }
 
@@ -80,8 +81,8 @@ Item {
                 width: parent.width
                 visible: page.stats.count <= 1
                 glyph: Pulse.metricGlyph(page.key)
-                title: "Not enough history"
-                hint: "One data point cannot make a trend. Keep wearing the watch and sync daily."
+                title: I18n.t("metric_detail.not_enough_history")
+                hint: I18n.t("metric_detail.not_enough_hint")
             }
 
             Row {
@@ -91,9 +92,9 @@ Item {
 
                 Repeater {
                     model: [
-                        { label: "Min", value: page.stats.min },
-                        { label: "Average", value: page.stats.avg },
-                        { label: "Max", value: page.stats.max }
+                        { label: I18n.t("metric_detail.min"), value: page.stats.min },
+                        { label: I18n.t("metric_detail.avg"), value: page.stats.avg },
+                        { label: I18n.t("metric_detail.max"), value: page.stats.max }
                     ]
                     delegate: Column {
                         spacing: units.dp(2)
@@ -116,7 +117,7 @@ Item {
             }
         }
 
-        SectionTitle { width: parent.width; text: "Samples" }
+        SectionTitle { width: parent.width; text: I18n.t("metric_detail.samples") }
 
         Card {
             width: parent.width
@@ -167,7 +168,7 @@ Item {
             Label {
                 visible: page.series.length === 0
                 width: parent.width
-                text: "No samples in this range."
+                text: I18n.t("metric_detail.no_samples")
                 color: Pulse.textDim
                 font.family: Pulse.face
                 font.pixelSize: Pulse.body

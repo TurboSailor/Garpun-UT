@@ -4,6 +4,7 @@ import "../theme"
 import "../store"
 import "../components"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 // Mirror of what pulsed forwarded to the watch. Read-only on purpose: this is
 // a diagnostic surface, the phone already owns the real notification centre.
@@ -33,10 +34,9 @@ Item {
         anchors.fill: parent
 
         PageHead {
-            width: parent.width
             showBack: true
-            kicker: "Sent to the watch"
-            title: "Notifications"
+            kicker: I18n.t("notifications.kicker")
+            title: I18n.t("notifications.title")
             trailingGlyph: "sync"
             onTrailing: Store.loadNotifications()
             onBack: page.back()
@@ -49,9 +49,9 @@ Item {
 
             Repeater {
                 model: [
-                    { key: "freedesktop", label: "Desktop" },
-                    { key: "waydroid", label: "Waydroid" },
-                    { key: "call", label: "Calls" }
+                    { key: "freedesktop", label: I18n.t("notifications.src_desktop") },
+                    { key: "waydroid", label: I18n.t("notifications.src_waydroid") },
+                    { key: "call", label: I18n.t("notifications.src_call") }
                 ]
 
                 delegate: Rectangle {
@@ -116,10 +116,10 @@ Item {
                 width: parent.width
                 visible: page.list.length === 0
                 glyph: "bell"
-                title: Store.online ? "Nothing forwarded yet" : "Pulse daemon offline"
+                title: Store.online ? I18n.t("notifications.empty_title") : I18n.t("status.daemon_offline")
                 hint: Store.online
-                      ? "Notifications appear here the moment pulsed relays one to the watch. Check that forwarding is enabled on the Device tab."
-                      : "Pulse cannot reach pulsed on 127.0.0.1:21830."
+                      ? I18n.t("notifications.empty_hint")
+                      : I18n.t("today.daemon_unreachable")
             }
 
             Repeater {
@@ -180,7 +180,7 @@ Item {
                             }
                             Label {
                                 visible: modelData.removed
-                                text: "\u00b7 dismissed"
+                                text: I18n.isRu() ? "\u00b7 закрыто" : "\u00b7 dismissed"
                                 color: Pulse.ringCal
                                 font.family: Pulse.face
                                 font.pixelSize: Pulse.micro
@@ -190,7 +190,7 @@ Item {
                         Label {
                             width: parent.width
                             elide: Text.ElideRight
-                            text: modelData.title && modelData.title.length ? modelData.title : "(no title)"
+                            text: modelData.title && modelData.title.length ? modelData.title : (I18n.isRu() ? "(без темы)" : "(no title)")
                             color: Pulse.text
                             font.family: Pulse.face
                             font.pixelSize: Pulse.body

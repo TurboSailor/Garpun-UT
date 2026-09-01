@@ -2,6 +2,7 @@ import QtQuick 2.12
 import Ubuntu.Components 1.3
 import "../theme"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 // "vs 7-day average" indicator. Flat is a legitimate answer and gets its own
 // wording instead of a misleading 0.
@@ -33,7 +34,7 @@ Row {
 
     Label {
         anchors.verticalCenter: parent.verticalCenter
-        text: root.flat ? "steady" : Fmt.trimNum(Math.abs(root.delta), root.decimals) + (root.unit ? " " + root.unit : "")
+        text: root.flat ? I18n.t("action.steady") : Fmt.trimNum(Math.abs(root.delta), root.decimals) + (root.unit ? " " + root.unit : "")
         color: root.flat ? Pulse.textDim : (root.good ? Pulse.mint : Pulse.ringCal)
         font.family: Pulse.face
         font.pixelSize: Pulse.micro

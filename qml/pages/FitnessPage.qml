@@ -4,6 +4,7 @@ import "../theme"
 import "../store"
 import "../components"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 Item {
     id: page
@@ -29,8 +30,8 @@ Item {
 
         PageHead {
             width: parent.width
-            kicker: "Activities"
-            title: "Fitness"
+            kicker: I18n.t("fitness.kicker")
+            title: I18n.t("fitness.title")
             trailingGlyph: "sync"
             onTrailing: Store.loadWorkouts()
         }
@@ -53,7 +54,7 @@ Item {
                         font.weight: Font.Light
                     }
                     Label {
-                        text: "sessions this week"
+                        text: I18n.isRu() ? "тренировок за неделю" : "sessions this week"
                         color: Pulse.textDim
                         font.family: Pulse.face
                         font.pixelSize: Pulse.caption
@@ -71,7 +72,7 @@ Item {
                         font.weight: Font.DemiBold
                     }
                     Label {
-                        text: "moving time"
+                        text: I18n.isRu() ? "время в движении" : "moving time"
                         color: Pulse.textDim
                         font.family: Pulse.face
                         font.pixelSize: Pulse.caption
@@ -98,7 +99,7 @@ Item {
 
         SectionTitle {
             width: parent.width
-            text: "All workouts"
+            text: I18n.t("fitness.all_workouts")
             visible: !page.waiting && page.list.length > 0
         }
 
@@ -112,11 +113,11 @@ Item {
                 width: parent.width
                 visible: page.list.length === 0
                 glyph: "timer"
-                title: Store.online ? "No workouts recorded" : "Pulse daemon offline"
+                title: Store.online ? I18n.t("fitness.no_workouts_title") : I18n.t("status.daemon_offline")
                 hint: Store.online
-                      ? "Start an activity on the watch. After the next sync it shows up here with its full trace."
-                      : "Pulse cannot reach pulsed on 127.0.0.1:21830."
-                action: Store.online && Store.connected ? "Sync now" : ""
+                      ? I18n.t("fitness.no_workouts_hint")
+                      : I18n.t("today.daemon_unreachable")
+                action: Store.online && Store.connected ? I18n.t("action.sync_now") : ""
                 onActionTriggered: Store.startSync()
             }
 

@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick 2.12
 import Ubuntu.Components 1.3
+import "../js/I18n.js" as I18n
 
 // Pulse design tokens. Palette values are lifted verbatim from the Android
 // app (res/values/colors.xml + values-night/colors.xml) so the port keeps the
@@ -46,11 +47,11 @@ QtObject {
     }
 
     readonly property var accents: [
-        { key: "blue",   label: "Neon Blue", color: dark ? "#2BB8FF" : "#1488D6" },
-        { key: "violet", label: "Violet",    color: dark ? "#8C6BFF" : "#6A40E0" },
-        { key: "coral",  label: "Coral",     color: dark ? "#FF6B6B" : "#E5484D" },
-        { key: "mint",   label: "Mint",      color: dark ? "#4AD6A0" : "#1FA877" },
-        { key: "pink",   label: "Pink",      color: dark ? "#FF63C0" : "#D6248C" }
+        { key: "blue",   label: I18n.t("accent.blue"),   color: dark ? "#2BB8FF" : "#1488D6" },
+        { key: "violet", label: I18n.t("accent.violet"), color: dark ? "#8C6BFF" : "#6A40E0" },
+        { key: "coral",  label: I18n.t("accent.coral"),  color: dark ? "#FF6B6B" : "#E5484D" },
+        { key: "mint",   label: I18n.t("accent.mint"),   color: dark ? "#4AD6A0" : "#1FA877" },
+        { key: "pink",   label: I18n.t("accent.pink"),   color: dark ? "#FF63C0" : "#D6248C" }
     ]
 
     // ---- rhythm --------------------------------------------------------
@@ -130,19 +131,19 @@ QtObject {
 
     function metricLabel(key) {
         switch (key) {
-        case "steps": return "Steps";
-        case "distance": return "Distance";
-        case "activetime": return "Active time";
-        case "calories": return "Calories";
-        case "intensity": return "Intensity";
-        case "sleep": return "Sleep";
-        case "heart_rate": return "Heart rate";
-        case "resting_hr": return "Resting HR";
-        case "body_energy": return "Body Battery";
-        case "stress": return "Stress";
-        case "spo2": return "Blood oxygen";
-        case "hrv": return "HRV";
-        case "respiration": return "Respiration";
+        case "steps": return I18n.t("metric.steps");
+        case "distance": return I18n.t("metric.distance");
+        case "activetime": return I18n.t("metric.activetime");
+        case "calories": return I18n.t("metric.calories");
+        case "intensity": return I18n.t("metric.intensity");
+        case "sleep": return I18n.t("metric.sleep");
+        case "heart_rate": return I18n.t("metric.heart_rate");
+        case "resting_hr": return I18n.t("metric.resting_hr");
+        case "body_energy": return I18n.t("metric.body_energy");
+        case "stress": return I18n.t("metric.stress");
+        case "spo2": return I18n.t("metric.spo2");
+        case "hrv": return I18n.t("metric.hrv");
+        case "respiration": return I18n.t("metric.respiration");
         }
         return key;
     }
@@ -188,10 +189,10 @@ QtObject {
 
     // Sleep score bands (docs §2.4).
     function sleepQuality(score) {
-        if (score >= 85) return "Excellent";
-        if (score >= 70) return "Good";
-        if (score >= 50) return "Fair";
-        return "Poor";
+        if (score >= 85) return I18n.t("sleep.quality_excellent");
+        if (score >= 70) return I18n.t("sleep.quality_good");
+        if (score >= 50) return I18n.t("sleep.quality_fair");
+        return I18n.t("sleep.quality_poor");
     }
     function sleepColor(score) {
         if (score >= 85) return mint;

@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick 2.12
 import Ubuntu.Components 1.3
 import "../js/Api.js" as Api
+import "../js/I18n.js" as I18n
 import "../js/Fmt.js" as Fmt
 import "../theme"
 
@@ -206,7 +207,7 @@ QtObject {
             }
         }, function (msg) {
             markOffline(msg);
-            toast("Could not save settings");
+            toast(I18n.t("toast.settings_save_failed"));
         });
     }
 
@@ -223,7 +224,7 @@ QtObject {
         }, function (msg) {
             markOffline(msg);
             scanning = false;
-            toast("Scan failed: " + msg);
+            toast(I18n.t("toast.scan_failed", [msg]));
         });
     }
 
@@ -248,7 +249,7 @@ QtObject {
             pairingPoll.restart();
         }, function (msg) {
             markOffline(msg);
-            toast("Pairing failed: " + msg);
+            toast(I18n.t("toast.pairing_failed", [msg]));
         });
     }
 
@@ -270,25 +271,25 @@ QtObject {
             loadDevices();
         }, function (msg) {
             markOffline(msg);
-            toast("Pairing reply failed");
+            toast(I18n.t("toast.pairing_reply_failed"));
         });
     }
 
     function connectDevice(addr) {
         Api.connect(addr, function () { markOnline(); refreshStatus(); },
-                    function (msg) { markOffline(msg); toast("Connect failed"); });
+                    function (msg) { markOffline(msg); toast(I18n.t("toast.connect_failed")); });
     }
     function disconnectDevice() {
         Api.disconnect(function () { markOnline(); refreshStatus(); },
-                       function (msg) { markOffline(msg); toast("Disconnect failed"); });
+                       function (msg) { markOffline(msg); toast(I18n.t("toast.disconnect_failed")); });
     }
     function forgetDevice(addr) {
         Api.forget(addr, function () { markOnline(); loadDevices(); refreshStatus(); },
-                   function (msg) { markOffline(msg); toast("Could not forget device"); });
+                   function (msg) { markOffline(msg); toast(I18n.t("toast.forget_failed")); });
     }
     function startSync() {
         Api.sync(function () { markOnline(); refreshStatus(); },
-                 function (msg) { markOffline(msg); toast("Sync failed"); });
+                 function (msg) { markOffline(msg); toast(I18n.t("toast.sync_failed")); });
     }
     function findWatch(sec) {
         Api.findWatch(sec, function () {
@@ -296,10 +297,10 @@ QtObject {
             ringing = true;
             ringTimer.interval = sec * 1000;
             ringTimer.restart();
-            toast("Watch is ringing");
+            toast(I18n.t("toast.watch_ringing"));
         }, function (msg) {
             markOffline(msg);
-            toast("Find my watch failed");
+            toast(I18n.t("toast.find_watch_failed"));
         });
     }
     function cancelFindWatch() {

@@ -4,6 +4,7 @@ import "../theme"
 import "../store"
 import "../components"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 Item {
     id: page
@@ -53,11 +54,11 @@ Item {
     readonly property string insight: {
         if (!hasNight) return "";
         if (asleep >= goalMinutes)
-            return "Goal met \u2014 " + Fmt.durationTrim(asleep) + " asleep against a " +
-                   Fmt.durationTrim(goalMinutes) + " target.";
+            return (I18n.isRu() ? "Цель достигнута — " : "Goal met \u2014 ") + Fmt.durationTrim(asleep) +
+                   (I18n.isRu() ? " сна при цели " : " asleep against a ") + Fmt.durationTrim(goalMinutes) + ".";
         if (asleep > 0 && asleep < goalMinutes)
-            return Fmt.durationTrim(goalMinutes - asleep) + " short of your " +
-                   Fmt.durationTrim(goalMinutes) + " target.";
+            return (I18n.isRu() ? "Не хватает " : "") + Fmt.durationTrim(goalMinutes - asleep) +
+                   (I18n.isRu() ? " до целевых " : " short of your ") + Fmt.durationTrim(goalMinutes) + ".";
         return "";
     }
 
@@ -67,7 +68,7 @@ Item {
         PageHead {
             width: parent.width
             kicker: Fmt.prettyDate(Store.date)
-            title: "Sleep"
+            title: I18n.t("sleep.title")
         }
 
         DateNav { width: parent.width }
@@ -81,10 +82,10 @@ Item {
                 width: parent.width
                 visible: !page.hasNight
                 glyph: "moon"
-                title: Store.online ? "No night recorded" : "Pulse daemon offline"
+                title: Store.online ? I18n.t("sleep.no_night_title") : I18n.t("status.daemon_offline")
                 hint: Store.online
-                      ? "Wear the watch overnight, then sync. Nights are filed under the day you wake up."
-                      : "Start pulsed on 127.0.0.1:21830 to read sleep data."
+                      ? I18n.t("sleep.no_night_hint")
+                      : I18n.t("sleep.start_pulsed_hint")
             }
 
             Item {
@@ -123,7 +124,7 @@ Item {
                     }
 
                     Label {
-                        text: Fmt.durationTrim(page.asleep) + " asleep"
+                        text: Fmt.durationTrim(page.asleep) + (I18n.isRu() ? " сна" : " asleep")
                         color: Pulse.text
                         font.family: Pulse.face
                         font.pixelSize: Pulse.body
@@ -140,7 +141,7 @@ Item {
 
                     Label {
                         visible: page.s && page.s.restlessMoments > 0
-                        text: page.s ? page.s.restlessMoments + " restless moments" : ""
+                        text: page.s ? page.s.restlessMoments + (I18n.isRu() ? " беспокойных движений" : " restless moments") : ""
                         color: Pulse.textDim
                         font.family: Pulse.face
                         font.pixelSize: Pulse.caption
@@ -176,7 +177,7 @@ Item {
                             }
                             Label {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: "of goal"
+                                text: I18n.t("sleep.goal_share")
                                 color: Pulse.textDim
                                 font.family: Pulse.face
                                 font.pixelSize: Pulse.micro
@@ -245,7 +246,7 @@ Item {
         // ---- hypnogram --------------------------------------------------------
         SectionTitle {
             width: parent.width
-            text: "Hypnogram"
+            text: I18n.t("sleep.hypnogram")
             visible: !page.waiting && page.hasNight
         }
 
@@ -281,7 +282,7 @@ Item {
                 Label {
                     visible: !page.s || !page.s.stages || page.s.stages.length === 0
                     anchors.centerIn: parent
-                    text: "No stage detail for this night"
+                    text: I18n.t("sleep.no_stages")
                     color: Pulse.textDim
                     font.family: Pulse.face
                     font.pixelSize: Pulse.micro
@@ -292,7 +293,7 @@ Item {
         // ---- trend ------------------------------------------------------------
         SectionTitle {
             width: parent.width
-            text: "Last 7 nights"
+            text: I18n.t("sleep.last_7_nights")
             visible: !page.waiting && page.trendPoints.length > 0
         }
 
@@ -313,8 +314,9 @@ Item {
                     for (var i = 0; i < page.trendPoints.length; i++) {
                         if (page.trendPoints[i].value > 0) { sum += page.trendPoints[i].value; n++; }
                     }
-                    return n > 0 ? "Average " + Fmt.durationTrim(sum / n) + " over " + n +
-                                   (n === 1 ? " night" : " nights") : "No nights recorded yet";
+                    if (n === 0) return I18n.t("sleep.no_nights_yet");
+                    var nStr = I18n.isRu() ? (n + " ночей") : (n + (n === 1 ? " night" : " nights"));
+                    return I18n.t("sleep.avg_nights", [Fmt.durationTrim(sum / n), nStr]);
                 }
                 color: Pulse.textDim
                 font.family: Pulse.face
@@ -325,7 +327,7 @@ Item {
         // ---- naps ----------------------------------------------------------
         SectionTitle {
             width: parent.width
-            text: "Naps"
+            text: I18n.t("sleep.naps")
             visible: !page.waiting && page.s && page.s.naps && page.s.naps.length > 0
         }
 
