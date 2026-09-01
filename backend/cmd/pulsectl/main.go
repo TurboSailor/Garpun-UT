@@ -18,6 +18,8 @@ import (
 
 	"pulse/backend/internal/ble"
 	"pulse/backend/internal/garmin"
+	"pulse/backend/internal/importer"
+	"pulse/backend/internal/store"
 )
 
 func main() {
@@ -43,6 +45,8 @@ func main() {
 		err = cmdConnect(ctx, log, os.Args[2:])
 	case "info":
 		err = cmdInfo(ctx, log)
+	case "reimport":
+		err = cmdReimport(log, os.Args[2:])
 	default:
 		usage()
 	}
@@ -57,6 +61,7 @@ func usage() {
   pulsectl scan [-t 20s]              discover BLE devices, flag Garmin watches
   pulsectl pair <MAC>                 bond with a watch (watch must be in pairing mode)
   pulsectl connect <MAC> [-sync] [-out DIR]
+  pulsectl reimport [-db PATH]        rebuild samples from stored FIT files
   pulsectl info                       adapter status`)
 	os.Exit(2)
 }
@@ -315,4 +320,74 @@ func cmdConnect(ctx context.Context, log *slog.Logger, args []string) error {
 			}
 		}
 	}
+}
+
+// cmdReimport rebuilds every derived table from the FIT blobs already in the
+// database. Used after an importer fix so the dashboard is corrected without
+// pulling the files off the watch again.
+func cmdReimport(log *slog.Logger, args []string) error {
+	fs := flag.NewFlagSet("reimport", flag.ExitOnError)
+	dbPath := fs.String("db", defaultDBPath(), "database file")
+	fs.Parse(args)
+
+	db, err := store.Open(*dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	fmt.Println("database:", db.Path())
+
+	devices, err := db.Devices()
+	if err != nil {
+		return err
+	}
+	if len(devices) == 0 {
+		return fmt.Errorf("no device rows: nothing to reimport")
+	}
+
+	im := importer.New(db, log)
+	for _, dev := range devices {
+		files, err := db.FitFiles(dev.ID)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s (%s): %d stored files\n", dev.Name, dev.Address, len(files))
+		if err := db.ResetDerived(dev.ID); err != nil {
+			return err
+		}
+		fmt.Println("  derived tables cleared")
+
+		var ok, failed int
+		totals := map[string]int{}
+		for _, f := range files {
+			res, err := im.Import(dev.ID, uint8(f.SubType), f.Data)
+			if err != nil {
+				failed++
+				log.Warn("reimport failed", "file", f.FileNumber, "err", err)
+				continue
+			}
+			ok++
+			totals[res.FileType] += res.Activity + res.Stress + res.SleepStages
+		}
+		fmt.Printf("  reimported %d files (%d failed)\n", ok, failed)
+		for kind, n := range totals {
+			fmt.Printf("    %-12s %d rows\n", kind, n)
+		}
+	}
+	return nil
+}
+
+func defaultDBPath() string {
+	if v := os.Getenv("PULSE_DB"); v != "" {
+		return v
+	}
+	base := os.Getenv("XDG_DATA_HOME")
+	if base == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			home = "."
+		}
+		base = filepath.Join(home, ".local", "share")
+	}
+	return filepath.Join(base, "pulse", "pulse.db")
 }

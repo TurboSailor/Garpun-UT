@@ -79,10 +79,13 @@ func (e *Engine) deltaSamples(fromMs, toMs int64) []store.ActivitySample {
 		return nil
 	}
 
-	// Baseline: the newest sample before the window, so the first minute is
-	// not credited with the whole previous day.
+	// Upstream (AbstractSampleProvider.convertCumulativeSteps) keeps the first
+	// sample of the range at its full value and only rebases it when an
+	// earlier sample exists right before the window. The counter resets at
+	// midnight, so the day's first reading already is the total so far and a
+	// baseline from yesterday must never be borrowed.
 	var prev *store.ActivitySample
-	if before, err := e.db.ActivitySamples(e.deviceID, fromMs+minute-24*3600_000, fromMs+minute); err == nil {
+	if before, err := e.db.ActivitySamples(e.deviceID, fromMs, fromMs+minute); err == nil {
 		for i := len(before) - 1; i >= 0; i-- {
 			if before[i].Steps > 0 || before[i].DistanceCm > 0 || before[i].ActiveCalories > 0 {
 				s := before[i]
@@ -96,14 +99,21 @@ func (e *Engine) deltaSamples(fromMs, toMs int64) []store.ActivitySample {
 	for _, s := range raw {
 		d := s
 		d.TsMs = s.TsMs - minute
-		if prev == nil {
-			d.Steps, d.DistanceCm, d.ActiveCalories = 0, 0, 0
-		} else {
+		if prev != nil {
 			d.Steps = counterDelta(prev.Steps, s.Steps)
 			d.DistanceCm = counterDelta(prev.DistanceCm, s.DistanceCm)
 			d.ActiveCalories = counterDelta(prev.ActiveCalories, s.ActiveCalories)
 		}
 		cur := s
+		if s.Steps == 0 && prev != nil && prev.Steps > 0 {
+			cur.Steps = prev.Steps
+		}
+		if s.DistanceCm == 0 && prev != nil && prev.DistanceCm > 0 {
+			cur.DistanceCm = prev.DistanceCm
+		}
+		if s.ActiveCalories == 0 && prev != nil && prev.ActiveCalories > 0 {
+			cur.ActiveCalories = prev.ActiveCalories
+		}
 		prev = &cur
 		out = append(out, d)
 	}
@@ -114,6 +124,10 @@ func (e *Engine) deltaSamples(fromMs, toMs int64) []store.ActivitySample {
 func counterDelta(prev, cur int) int {
 	if cur >= prev {
 		return cur - prev
+	}
+	// If the counter dropped to 0 (unrecorded/unworn), the delta is 0, not a reset.
+	if cur == 0 {
+		return 0
 	}
 	return cur
 }

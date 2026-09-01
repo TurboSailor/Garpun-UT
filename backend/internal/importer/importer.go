@@ -228,6 +228,7 @@ func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
 	var samples []store.ActivitySample
 	var intensity []store.IntensityMinutes
 	var prevTs int64
+	var prevSteps, prevDist, prevCal int
 	prevKind := KindNotMeasured
 
 	for _, ts := range keys {
@@ -239,11 +240,13 @@ func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
 			}
 			for gap := prevTs + 60; gap < ts; gap += 60 {
 				samples = append(samples, store.ActivitySample{
-					TsMs:         gap * 1000,
-					Steps:        0,
-					HeartRate:    KindNotMeasured,
-					RawIntensity: KindNotMeasured,
-					RawKind:      kind,
+					TsMs:           gap * 1000,
+					Steps:          prevSteps,
+					DistanceCm:     prevDist,
+					ActiveCalories: prevCal,
+					HeartRate:      KindNotMeasured,
+					RawIntensity:   KindNotMeasured,
+					RawKind:        kind,
 				})
 			}
 		}
@@ -275,6 +278,7 @@ func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
 			})
 		}
 		prevTs, prevKind = ts, KindActivity
+		prevSteps, prevDist, prevCal = s.Steps, s.DistanceCm, s.ActiveCalories
 	}
 
 	if err := im.db.PutActivitySamples(deviceID, samples); err != nil {

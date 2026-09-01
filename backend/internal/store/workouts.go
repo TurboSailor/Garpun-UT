@@ -193,6 +193,56 @@ func (db *DB) HasFitFile(deviceID int64, fileNumber int) bool {
 	return err == nil && n > 0
 }
 
+// FitFiles returns every stored file for a device, oldest first, with the raw
+// blob attached so the importer can replay them.
+func (db *DB) FitFiles(deviceID int64) ([]FitFile, error) {
+	rows, err := db.sql.Query(`
+SELECT id, device_id, file_number, data_type, sub_type, file_ts, flags, size, downloaded_ms, imported, data
+FROM fit_file WHERE device_id = ? AND data IS NOT NULL ORDER BY file_ts, file_number`, deviceID)
+	if err != nil {
+		return nil, fmt.Errorf("store: fit files: %w", err)
+	}
+	defer rows.Close()
+	var out []FitFile
+	for rows.Next() {
+		var f FitFile
+		var imported int
+		if err := rows.Scan(&f.ID, &f.DeviceID, &f.FileNumber, &f.DataType, &f.SubType,
+			&f.FileTs, &f.Flags, &f.Size, &f.DownloadedMs, &imported, &f.Data); err != nil {
+			return nil, err
+		}
+		f.Imported = imported != 0
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// ResetDerived drops every table the importer rebuilds from FIT files. The
+// files themselves and the device row survive, so a reimport restores the
+// dashboard without touching the watch.
+func (db *DB) ResetDerived(deviceID int64) error {
+	return db.tx(func(tx *sql.Tx) error {
+		// Track rows hang off workout, which has no device column of its own.
+		if _, err := tx.Exec(`
+DELETE FROM workout_track WHERE workout_id IN (SELECT id FROM workout WHERE device_id = ?)`,
+			deviceID); err != nil {
+			return fmt.Errorf("store: reset workout_track: %w", err)
+		}
+		for _, t := range []string{
+			"activity_sample", "stress_sample", "body_energy_sample", "spo2_sample",
+			"sleep_stage_sample", "sleep_stats_sample", "sleep_event", "nap_sample",
+			"restless_moments_sample", "hrv_value_sample", "hrv_summary_sample",
+			"respiratory_rate_sample", "resting_hr_sample", "rmr_sample",
+			"intensity_minutes_sample", "metric_sample", "workout",
+		} {
+			if _, err := tx.Exec(`DELETE FROM `+t+` WHERE device_id = ?`, deviceID); err != nil {
+				return fmt.Errorf("store: reset %s: %w", t, err)
+			}
+		}
+		return nil
+	})
+}
+
 func boolInt(b bool) int {
 	if b {
 		return 1
