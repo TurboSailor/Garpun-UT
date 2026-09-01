@@ -100,6 +100,7 @@ Item {
         SectionTitle {
             width: parent.width
             text: I18n.t("fitness.all_workouts")
+            glyph: "timer"
             visible: !page.waiting && page.list.length > 0
         }
 

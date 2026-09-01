@@ -198,7 +198,7 @@ Item {
                 hue: Pulse.ringHr
                 loading: page.waiting
                 value: Fmt.thousands(page.num("activeCalories", 0))
-                unit: "kcal"
+                unit: I18n.t("unit.kcal")
                 caption: page.num("restingCalories", 0) > 0
                          ? "+" + Fmt.thousands(page.num("restingCalories", 0)) + (I18n.isRu() ? " покой" : " resting") : ""
                 factor: page.num("activeCalories", 0) / page.goal("activeCalories")
@@ -235,7 +235,7 @@ Item {
                 hue: Pulse.ringHr
                 loading: page.waiting
                 value: page.sub("heartRate", "latest") > 0 ? "" + page.sub("heartRate", "latest") : "\u2013"
-                unit: "bpm"
+                unit: I18n.t("unit.bpm")
                 caption: page.sub("heartRate", "resting") > 0
                          ? (I18n.isRu() ? "покой " : "resting ") + page.sub("heartRate", "resting")
                          : (page.sub("heartRate", "max") > 0
@@ -276,6 +276,7 @@ Item {
         SectionTitle {
             width: parent.width
             text: I18n.t("today.recent_workouts")
+            glyph: "timer"
             action: Store.workouts && Store.workouts.length > 0 ? I18n.t("action.see_all") : ""
             onActionTriggered: page.openTab("fitness")
         }

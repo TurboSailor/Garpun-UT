@@ -162,9 +162,67 @@ QtObject {
         case "stress": return "gauge";
         case "spo2": return "drop";
         case "hrv": return "heart";
-        case "respiration": return "wave";
+        case "respiration": return "lungs";
         }
         return "star";
+    }
+
+    // Units the daemon ships in English; the UI renders its own so the whole
+    // surface follows the interface language.
+    function metricUnit(key) {
+        switch (key) {
+        case "heart_rate":
+        case "resting_hr": return I18n.t("unit.bpm");
+        case "body_energy":
+        case "spo2": return "%";
+        case "hrv": return I18n.t("unit.ms");
+        case "respiration": return I18n.t("unit.brpm");
+        case "intensity":
+        case "sleep": return I18n.t("unit.min");
+        case "calories": return I18n.t("unit.kcal");
+        case "stress":
+        case "steps": return "";
+        }
+        return "";
+    }
+
+    // FIT sport enum -> icon. Mirrors Fmt.sportName so a workout carries the
+    // same identity in the list, the detail header and the summary tiles.
+    function sportGlyph(sport) {
+        switch (sport) {
+        case 1: return "run";
+        case 2: return "bike";
+        case 4: return "swim";
+        case 5: return "basketball";
+        case 6: return "soccer";
+        case 7: return "tennis";
+        case 9:
+        case 15: return "row";
+        case 11: return "walk";
+        case 13: return "ski";
+        case 17: return "hike";
+        case 18: return "multisport";
+        case 25: return "strength";
+        case 26: return "cardio";
+        case 41: return "paddle";
+        case 43: return "yoga";
+        }
+        return "timer";
+    }
+
+    // Garmin ActivityKind -> icon, for entries that carry no FIT sport.
+    function activityGlyph(kind) {
+        switch (kind) {
+        case 0x10: return "run";
+        case 0x20: return "walk";
+        case 0x40: return "swim";
+        case 0x80: return "bike";
+        case 0x100: return "treadmill";
+        case 0x200: return "strength";
+        case 0x04000000: return "map";
+        case 0x04000001: return "run";
+        }
+        return "timer";
     }
 
     // Lower is better for these, so a negative delta is the good direction.

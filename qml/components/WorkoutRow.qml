@@ -31,15 +31,9 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         name: {
             if (!root.workout) return "timer";
-            switch (root.workout.sport) {
-            case 1: return "steps";
-            case 2: return "route";
-            case 4: return "drop";
-            case 11:
-            case 17: return "mountain";
-            case 25: return "bolt";
-            }
-            return "timer";
+            if (root.workout.sport !== undefined && root.workout.sport > 0)
+                return Pulse.sportGlyph(root.workout.sport);
+            return Pulse.activityGlyph(root.workout.kind);
         }
         size: units.gu(2.5)
         color: Pulse.accent

@@ -2,6 +2,7 @@ import QtQuick 2.12
 import Ubuntu.Components 1.3
 import "../theme"
 import "../js/Fmt.js" as Fmt
+import "../js/I18n.js" as I18n
 
 Item {
     id: root
@@ -52,8 +53,9 @@ Item {
                 if (!root.device) return "";
                 var bits = [];
                 if (root.device.model && root.device.model.length) bits.push(root.device.model);
-                bits.push(root.device.connected ? "connected" : "offline");
-                if (root.device.lastSyncMs > 0) bits.push("synced " + Fmt.relative(root.device.lastSyncMs));
+                bits.push(root.device.connected ? I18n.t("device.row_connected") : I18n.t("device.row_offline"));
+                if (root.device.lastSyncMs > 0)
+                    bits.push(I18n.t("status.synced_relative", [Fmt.relative(root.device.lastSyncMs)]));
                 return bits.join(" \u00b7 ");
             }
             color: Pulse.textDim

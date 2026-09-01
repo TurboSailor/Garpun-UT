@@ -113,9 +113,7 @@ Item {
                         }
                         Label {
                             anchors.baseline: scoreLabel.baseline
-                            text: page.score > 0
-                                  ? (page.s && page.s.quality ? page.s.quality : Pulse.sleepQuality(page.score))
-                                  : ""
+                            text: page.score > 0 ? Pulse.sleepQuality(page.score) : ""
                             color: Pulse.sleepColor(page.score)
                             font.family: Pulse.face
                             font.pixelSize: Pulse.subtitle
@@ -247,6 +245,7 @@ Item {
         SectionTitle {
             width: parent.width
             text: I18n.t("sleep.hypnogram")
+            glyph: "moon"
             visible: !page.waiting && page.hasNight
         }
 
@@ -294,6 +293,7 @@ Item {
         SectionTitle {
             width: parent.width
             text: I18n.t("sleep.last_7_nights")
+            glyph: "trend_up"
             visible: !page.waiting && page.trendPoints.length > 0
         }
 
@@ -328,6 +328,7 @@ Item {
         SectionTitle {
             width: parent.width
             text: I18n.t("sleep.naps")
+            glyph: "clock"
             visible: !page.waiting && page.s && page.s.naps && page.s.naps.length > 0
         }
 

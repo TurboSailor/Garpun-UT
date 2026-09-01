@@ -116,7 +116,7 @@ Item {
         }
 
         // ---- paired ----------------------------------------------------
-        SectionTitle { width: parent.width; text: I18n.t("device.paired_section") }
+        SectionTitle { width: parent.width; text: I18n.t("device.paired_section"); glyph: "watch" }
 
         Card {
             width: parent.width
@@ -150,6 +150,7 @@ Item {
         SectionTitle {
             width: parent.width
             text: I18n.t("device.nearby_section")
+            glyph: "bluetooth"
             action: Store.scanning ? I18n.t("action.stop") : I18n.t("action.scan")
             onActionTriggered: {
                 if (Store.scanning) Store.stopScan();
@@ -186,7 +187,7 @@ Item {
         }
 
         // ---- appearance -------------------------------------------------
-        SectionTitle { width: parent.width; text: I18n.t("device.appearance_section") }
+        SectionTitle { width: parent.width; text: I18n.t("device.appearance_section"); glyph: "sliders" }
 
         Card {
             width: parent.width
@@ -281,7 +282,7 @@ Item {
         }
 
         // ---- goals -------------------------------------------------------
-        SectionTitle { width: parent.width; text: I18n.t("device.goals_section") }
+        SectionTitle { width: parent.width; text: I18n.t("device.goals_section"); glyph: "star" }
 
         Card {
             width: parent.width
@@ -372,7 +373,7 @@ Item {
         }
 
         // ---- behaviour --------------------------------------------------
-        SectionTitle { width: parent.width; text: I18n.t("device.integrations_section") }
+        SectionTitle { width: parent.width; text: I18n.t("device.integrations_section"); glyph: "settings" }
 
         Card {
             width: parent.width
@@ -460,8 +461,8 @@ Item {
         Label {
             width: parent.width
             text: Store.online
-                  ? "Connected to pulsed " + Store.daemonVersion + " on 127.0.0.1:21830"
-                  : "pulsed is not answering on 127.0.0.1:21830"
+                  ? I18n.t("device.footer_online", [Store.daemonVersion])
+                  : I18n.t("device.footer_offline")
             color: Pulse.textDim
             font.family: Pulse.face
             font.pixelSize: Pulse.micro

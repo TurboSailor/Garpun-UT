@@ -60,7 +60,7 @@ Item {
                 }
                 Label {
                     anchors.baseline: big.baseline
-                    text: page.metric ? page.metric.unit : ""
+                    text: page.key.length ? Pulse.metricUnit(page.key) : ""
                     color: Pulse.textDim
                     font.family: Pulse.face
                     font.pixelSize: Pulse.subtitle
@@ -117,7 +117,7 @@ Item {
             }
         }
 
-        SectionTitle { width: parent.width; text: I18n.t("metric_detail.samples") }
+        SectionTitle { width: parent.width; text: I18n.t("metric_detail.samples"); glyph: "calendar" }
 
         Card {
             width: parent.width
@@ -145,7 +145,7 @@ Item {
                         anchors.rightMargin: Pulse.m
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.value > 0
-                              ? Fmt.trimNum(modelData.value, page.decimals) + " " + (page.metric ? page.metric.unit : "")
+                              ? Fmt.trimNum(modelData.value, page.decimals) + " " + Pulse.metricUnit(page.key)
                               : "\u2013"
                         color: Pulse.text
                         font.family: Pulse.face

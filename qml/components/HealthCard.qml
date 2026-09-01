@@ -90,7 +90,7 @@ Rectangle {
                 }
                 Label {
                     anchors.baseline: bigValue.baseline
-                    text: root.metric ? root.metric.unit : ""
+                    text: root.key.length ? Pulse.metricUnit(root.key) : ""
                     color: Pulse.textDim
                     font.family: Pulse.face
                     font.pixelSize: Pulse.body
@@ -103,7 +103,7 @@ Rectangle {
                 reference: root.average
                 inverted: Pulse.metricInverted(root.key)
                 decimals: root.decimals
-                unit: root.metric ? root.metric.unit : ""
+                unit: root.key.length ? Pulse.metricUnit(root.key) : ""
             }
         }
     }
@@ -148,7 +148,7 @@ Rectangle {
             }
             Label {
                 anchors.baseline: smallValue.baseline
-                text: root.metric ? root.metric.unit : ""
+                text: root.key.length ? Pulse.metricUnit(root.key) : ""
                 color: Pulse.textDim
                 font.family: Pulse.face
                 font.pixelSize: Pulse.micro
