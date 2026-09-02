@@ -230,7 +230,7 @@ DELETE FROM workout_track WHERE workout_id IN (SELECT id FROM workout WHERE devi
 		}
 		for _, t := range []string{
 			"activity_sample", "stress_sample", "body_energy_sample", "spo2_sample",
-			"sleep_stage_sample", "sleep_stats_sample", "sleep_event", "nap_sample",
+			"sleep_stage_sample", "sleep_stats_sample", "sleep_event", "nap_sample", "sleep_session",
 			"restless_moments_sample", "hrv_value_sample", "hrv_summary_sample",
 			"respiratory_rate_sample", "resting_hr_sample", "rmr_sample",
 			"intensity_minutes_sample", "metric_sample", "workout",

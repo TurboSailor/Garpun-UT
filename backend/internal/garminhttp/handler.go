@@ -159,6 +159,9 @@ func (h *Handler) dispatch(requestID uint16, smart *pb.Smart) *pb.Smart {
 		return h.handleAuthentication(smart.GetAuthenticationService())
 	case smart.GetNotificationsService() != nil:
 		return h.handleNotifications(smart.GetNotificationsService())
+	case smart.GetFileSyncService() != nil:
+		h.log.Debug("garminhttp: fileSync", "msg", smart.GetFileSyncService().String())
+		return nil
 	default:
 		h.log.Warn("garminhttp: unhandled protobuf service", "service", serviceName(smart))
 		return nil

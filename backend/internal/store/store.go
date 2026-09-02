@@ -144,7 +144,7 @@ func (db *DB) ForgetDevice(addr string) error {
 	defer tx.Rollback()
 	for _, t := range []string{
 		"activity_sample", "stress_sample", "body_energy_sample", "spo2_sample",
-		"sleep_stage_sample", "sleep_event", "sleep_stats_sample", "nap_sample",
+		"sleep_stage_sample", "sleep_event", "sleep_stats_sample", "nap_sample", "sleep_session",
 		"restless_moments_sample", "hrv_value_sample", "hrv_summary_sample",
 		"respiratory_rate_sample", "resting_hr_sample", "rmr_sample",
 		"intensity_minutes_sample", "metric_sample", "battery_level", "workout", "fit_file",

@@ -34,6 +34,7 @@ Item {
         anchors.fill: parent
 
         PageHead {
+            width: parent.width
             showBack: true
             kicker: I18n.t("notifications.kicker")
             title: I18n.t("notifications.title")

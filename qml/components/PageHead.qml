@@ -15,6 +15,11 @@ Item {
     signal back()
     signal trailing()
 
+    // Without a width the trailing button anchors to parent.right at x=0 and
+    // lands on top of the back button, which is how one page shipped a broken
+    // header. Default to the parent so the failure cannot repeat silently; a
+    // page that needs another width just assigns it.
+    width: parent ? parent.width : 0
     height: Math.max(col.height, units.gu(5))
 
     Item {

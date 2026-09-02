@@ -413,6 +413,11 @@ func (s *Session) handleStatus(f *gfdi.Frame) {
 			s.mu.Lock()
 			s.supportedFile = types
 			s.mu.Unlock()
+			for _, t := range types {
+				s.log.Debug("garmin: watch supports file type",
+					"type", t.DataType, "subtype", t.SubType, "watchName", t.Name,
+					"name", FileTypeName(t.DataType, t.SubType))
+			}
 		}
 	case gfdi.MsgNotificationData:
 		s.onNotificationDataStatus(st)

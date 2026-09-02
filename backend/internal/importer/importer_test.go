@@ -228,3 +228,69 @@ func TestZeroDipDoesNotRecreditCounter(t *testing.T) {
 		t.Errorf("steps = %d, want %d (was doubled to 16342 before the fix)", got, want)
 	}
 }
+
+// TestImportSleepFromMetricsFile pins the Forerunner 255 behaviour: the watch
+// never offers the per-stage SLEEP file over the classic transfer, and ships
+// the night as a DAILY_SLEEP record inside METRICS. Reading it with the wrong
+// field names (start_timestamp/end_timestamp) silently produced no sleep at
+// all, which is what the dashboard showed.
+func TestImportSleepFromMetricsFile(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(testdataDir, "METRICS_2026-09-02_daily-sleep_185.fit"))
+	if err != nil {
+		t.Skipf("no metrics capture: %v", err)
+	}
+	db, deviceID := testDB(t)
+	im := New(db, quietLogger())
+
+	res, err := im.Import(deviceID, 44, data)
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if res.FileType != "METRICS" {
+		t.Errorf("file type = %q, want METRICS", res.FileType)
+	}
+	if res.SleepSessions != 1 {
+		t.Fatalf("sleep sessions = %d, want 1", res.SleepSessions)
+	}
+
+	sessions, err := db.SleepSessions(deviceID, 0, time.Now().AddDate(1, 0, 0).UnixMilli())
+	if err != nil {
+		t.Fatalf("read sessions: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("stored sessions = %d, want 1", len(sessions))
+	}
+	s := sessions[0]
+	if s.Score != 74 {
+		t.Errorf("score = %d, want 74", s.Score)
+	}
+	if got := (s.EndMs - s.StartMs) / 60000; got != 356 {
+		t.Errorf("window = %d min, want 356", got)
+	}
+	if s.AwakeMs != 994*1000 {
+		t.Errorf("awake = %d ms, want %d", s.AwakeMs, 994*1000)
+	}
+	if s.StartBodyBattery != 13 || s.EndBodyBattery != 59 {
+		t.Errorf("body battery = %d -> %d, want 13 -> 59", s.StartBodyBattery, s.EndBodyBattery)
+	}
+
+	// The night must reach the dashboard even though no stage data exists.
+	e := analytics.New(db, deviceID, analytics.DefaultSettings(), time.Local)
+	day := time.UnixMilli(s.EndMs).Local()
+	rep := e.Sleep(day)
+	if rep.HasStages {
+		t.Error("hasStages must stay false: the file carries no stage data")
+	}
+	if rep.Score != 74 {
+		t.Errorf("report score = %d, want 74", rep.Score)
+	}
+	if rep.AsleepMinutes != 340 {
+		t.Errorf("asleep = %d min, want 340 (356 in bed minus 16 awake)", rep.AsleepMinutes)
+	}
+	if rep.StartMs != s.StartMs || rep.EndMs != s.EndMs {
+		t.Error("report must carry the sleep window")
+	}
+	if got := e.Today(day).SleepMinutes; got != 340 {
+		t.Errorf("today sleep = %d min, want 340", got)
+	}
+}

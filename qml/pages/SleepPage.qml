@@ -12,7 +12,11 @@ Item {
     readonly property var s: Store.sleep
     readonly property bool waiting: Store.sleep === null && (Store.sleepLoading || !Store.everAnswered)
     readonly property var totals: s && s.totals ? s.totals : null
-    readonly property real asleep: totals ? (totals.deep || 0) + (totals.light || 0) + (totals.rem || 0) : 0
+    // The backend reports asleep minutes for both data shapes: summed from
+    // stages when the watch gives them, and from the watch's own nightly
+    // summary when it does not.
+    readonly property real asleep: s ? (s.asleepMinutes || 0) : 0
+    readonly property bool hasStages: !!(s && s.hasStages)
     readonly property real inBed: asleep + (totals ? (totals.awake || 0) : 0)
     readonly property int score: s && s.score > 0 ? s.score : 0
     readonly property bool hasNight: asleep > 0 || score > 0
@@ -206,7 +210,7 @@ Item {
         // ---- stages ---------------------------------------------------------
         Card {
             width: parent.width
-            visible: !page.waiting && page.hasNight
+            visible: !page.waiting && page.hasNight && page.hasStages
 
             StageBar {
                 width: parent.width
@@ -255,6 +259,9 @@ Item {
 
             Hypnogram {
                 width: parent.width
+                // Nothing to draw without stages: the card then carries just
+                // the window and the note below.
+                visible: page.hasStages
                 stages: page.s && page.s.stages ? page.s.stages : []
                 startMs: page.s ? page.s.startMs : 0
                 endMs: page.s ? page.s.endMs : 0
@@ -279,7 +286,7 @@ Item {
                     font.pixelSize: Pulse.micro
                 }
                 Label {
-                    visible: !page.s || !page.s.stages || page.s.stages.length === 0
+                    visible: !page.hasStages
                     anchors.centerIn: parent
                     text: I18n.t("sleep.no_stages")
                     color: Pulse.textDim

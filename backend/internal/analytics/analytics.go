@@ -316,7 +316,7 @@ func (e *Engine) Today(day time.Time) Today {
 	t.TotalCalories = t.ActiveCalories + t.RestingCalories
 
 	sleep := e.Sleep(day)
-	t.SleepMinutes = sleep.Totals.Deep + sleep.Totals.Light + sleep.Totals.REM
+	t.SleepMinutes = sleep.AsleepMinutes
 	t.SleepScore = sleep.Score
 
 	t.IntensityMinutes = e.intensity(day)
@@ -419,15 +419,23 @@ type TrendPoint struct {
 
 // SleepReport is the payload of GET /api/sleep.
 type SleepReport struct {
-	Score           int              `json:"score"`
-	Quality         string           `json:"quality"`
-	StartMs         int64            `json:"startMs"`
-	EndMs           int64            `json:"endMs"`
-	Totals          SleepTotals      `json:"totals"`
-	Stages          []SleepStageSpan `json:"stages"`
-	Naps            []NapSpan        `json:"naps"`
-	Trend           []TrendPoint     `json:"trend"`
-	RestlessMoments int              `json:"restlessMoments"`
+	Score   int         `json:"score"`
+	Quality string      `json:"quality"`
+	StartMs int64       `json:"startMs"`
+	EndMs   int64       `json:"endMs"`
+	Totals  SleepTotals `json:"totals"`
+	// AsleepMinutes is the night length excluding awake time. With stage data
+	// it equals deep+light+rem; without it, it comes from the watch's own
+	// nightly summary, which is all some devices provide.
+	AsleepMinutes int `json:"asleepMinutes"`
+	// HasStages tells the UI whether a hypnogram and a stage breakdown exist.
+	HasStages        bool             `json:"hasStages"`
+	StartBodyBattery int              `json:"startBodyBattery"`
+	EndBodyBattery   int              `json:"endBodyBattery"`
+	Stages           []SleepStageSpan `json:"stages"`
+	Naps             []NapSpan        `json:"naps"`
+	Trend            []TrendPoint     `json:"trend"`
+	RestlessMoments  int              `json:"restlessMoments"`
 }
 
 // sleepWindow is the 24 hours ending at noon of the selected day, which is how
@@ -445,9 +453,7 @@ func (e *Engine) Sleep(day time.Time) SleepReport {
 
 	samples, err := e.db.SleepStages(e.deviceID, from, to)
 	if err != nil || len(samples) == 0 {
-		rep.Trend = e.sleepTrend(day)
-		rep.Quality = qualityLabel(0)
-		return rep
+		return e.sleepFromSummary(day, from, to)
 	}
 	sort.Slice(samples, func(i, j int) bool { return samples[i].TsMs < samples[j].TsMs })
 
@@ -470,9 +476,7 @@ func (e *Engine) Sleep(day time.Time) SleepReport {
 	// longest session is reported as the main sleep.
 	sessions := splitSessions(spans, 60*60*1000)
 	if len(sessions) == 0 {
-		rep.Trend = e.sleepTrend(day)
-		rep.Quality = qualityLabel(0)
-		return rep
+		return e.sleepFromSummary(day, from, to)
 	}
 	main := 0
 	bestAsleep := -1
@@ -486,6 +490,12 @@ func (e *Engine) Sleep(day time.Time) SleepReport {
 	rep.StartMs = rep.Stages[0].StartMs
 	rep.EndMs = rep.Stages[len(rep.Stages)-1].EndMs
 	rep.Totals = stageTotals(rep.Stages)
+	rep.HasStages = true
+	rep.AsleepMinutes = rep.Totals.Deep + rep.Totals.Light + rep.Totals.REM
+	if sess, err := e.db.SleepSessions(e.deviceID, from, to); err == nil && len(sess) > 0 {
+		s := sess[len(sess)-1]
+		rep.StartBodyBattery, rep.EndBodyBattery = s.StartBodyBattery, s.EndBodyBattery
+	}
 
 	for i, s := range sessions {
 		if i == main {
@@ -518,6 +528,62 @@ func (e *Engine) Sleep(day time.Time) SleepReport {
 		}
 	}
 	rep.Trend = e.sleepTrend(day)
+	return rep
+}
+
+// sleepFromSummary builds the report when no per-stage data exists. The watch
+// still reports the night itself (FIT DAILY_SLEEP): window, awake time and its
+// own score. Without stages there is no hypnogram, and HasStages stays false so
+// the UI can say so instead of drawing an empty graph.
+func (e *Engine) sleepFromSummary(day time.Time, from, to int64) SleepReport {
+	rep := SleepReport{Trend: e.sleepTrend(day)}
+
+	sessions, err := e.db.SleepSessions(e.deviceID, from, to)
+	if err != nil || len(sessions) == 0 {
+		rep.Quality = qualityLabel(0)
+		return rep
+	}
+	// Several summaries can land in one window when the watch revises a night;
+	// the last one wins, and shorter ones are daytime naps.
+	main := 0
+	for i, s := range sessions {
+		if s.EndMs-s.StartMs > sessions[main].EndMs-sessions[main].StartMs {
+			main = i
+		}
+	}
+	s := sessions[main]
+	rep.StartMs, rep.EndMs = s.StartMs, s.EndMs
+	rep.StartBodyBattery, rep.EndBodyBattery = s.StartBodyBattery, s.EndBodyBattery
+	awake := int(s.AwakeMs / 60000)
+	total := int((s.EndMs - s.StartMs) / 60000)
+	if awake > total {
+		awake = total
+	}
+	rep.AsleepMinutes = total - awake
+	rep.Totals.Awake = awake
+
+	for i, n := range sessions {
+		if i == main {
+			continue
+		}
+		if m := int((n.EndMs - n.StartMs) / 60000); m >= 10 {
+			rep.Naps = append(rep.Naps, NapSpan{StartMs: n.StartMs, EndMs: n.EndMs, Minutes: m})
+		}
+	}
+
+	rep.Score = s.Score
+	if rep.Score == 0 {
+		if p, ok := e.db.LatestSeries("sleep_score", e.deviceID, to); ok && p.TsMs >= from {
+			rep.Score = int(p.Value)
+		}
+	}
+	rep.Quality = qualityLabel(rep.Score)
+
+	if pts, err := e.db.Series("restless", e.deviceID, from, to); err == nil {
+		for _, p := range pts {
+			rep.RestlessMoments += int(p.Value)
+		}
+	}
 	return rep
 }
 
@@ -631,6 +697,18 @@ func (e *Engine) sleepTrend(day time.Time) []TrendPoint {
 				}
 			}
 			p.Minutes = asleepMinutes(spans)
+		}
+		if p.Minutes == 0 {
+			// No stages for that night: fall back to the watch's own summary,
+			// counted exactly as sleepFromSummary does.
+			if sess, err := e.db.SleepSessions(e.deviceID, from, to); err == nil {
+				for _, s := range sess {
+					m := int((s.EndMs-s.StartMs)/60000) - int(s.AwakeMs/60000)
+					if m > p.Minutes {
+						p.Minutes = m
+					}
+				}
+			}
 		}
 		if sp, ok := e.db.LatestSeries("sleep_score", e.deviceID, to); ok && sp.TsMs >= from {
 			p.Score = int(sp.Value)

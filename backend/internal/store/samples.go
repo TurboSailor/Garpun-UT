@@ -278,6 +278,64 @@ SELECT ts_ms, end_ts_ms FROM nap_sample WHERE device_id = ? AND ts_ms >= ? AND t
 	return out, rows.Err()
 }
 
+// SleepSession is the watch's own summary of one night.
+type SleepSession struct {
+	StartMs          int64 `json:"startMs"`
+	EndMs            int64 `json:"endMs"`
+	AwakeMs          int64 `json:"awakeMs"`
+	Score            int   `json:"score"`
+	StartBodyBattery int   `json:"startBodyBattery"`
+	EndBodyBattery   int   `json:"endBodyBattery"`
+}
+
+func (db *DB) PutSleepSessions(deviceID int64, sessions []SleepSession) error {
+	if len(sessions) == 0 {
+		return nil
+	}
+	return db.tx(func(tx *sql.Tx) error {
+		st, err := tx.Prepare(`
+INSERT INTO sleep_session (device_id, start_ms, end_ms, awake_ms, score, start_body_battery, end_body_battery)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(device_id, start_ms) DO UPDATE SET
+    end_ms = excluded.end_ms, awake_ms = excluded.awake_ms, score = excluded.score,
+    start_body_battery = excluded.start_body_battery, end_body_battery = excluded.end_body_battery`)
+		if err != nil {
+			return err
+		}
+		defer st.Close()
+		for _, s := range sessions {
+			if _, err := st.Exec(deviceID, s.StartMs, s.EndMs, s.AwakeMs, s.Score,
+				s.StartBodyBattery, s.EndBodyBattery); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// SleepSessions returns the sessions that end inside the window, which is how
+// a night is attributed to a day.
+func (db *DB) SleepSessions(deviceID, fromMs, toMs int64) ([]SleepSession, error) {
+	rows, err := db.sql.Query(`
+SELECT start_ms, end_ms, awake_ms, score, start_body_battery, end_body_battery
+FROM sleep_session WHERE device_id = ? AND end_ms >= ? AND end_ms < ? ORDER BY start_ms`,
+		deviceID, fromMs, toMs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SleepSession
+	for rows.Next() {
+		var s SleepSession
+		if err := rows.Scan(&s.StartMs, &s.EndMs, &s.AwakeMs, &s.Score,
+			&s.StartBodyBattery, &s.EndBodyBattery); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
 // IntensityMinutes is the weekly moderate/vigorous accumulator.
 type IntensityMinutes struct {
 	TsMs     int64 `json:"tsMs"`

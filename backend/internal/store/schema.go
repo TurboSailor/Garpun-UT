@@ -73,6 +73,16 @@ CREATE TABLE IF NOT EXISTS nap_sample (
     PRIMARY KEY (device_id, ts_ms)
 ) WITHOUT ROWID;
 
+-- The nightly summary the watch computes itself (FIT DAILY_SLEEP). Some
+-- devices, Forerunner 255 among them, never hand over the per-stage SLEEP file
+-- over the classic transfer, so this row is the only record of the night.
+CREATE TABLE IF NOT EXISTS sleep_session (
+    device_id INTEGER NOT NULL, start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL,
+    awake_ms INTEGER NOT NULL DEFAULT 0, score INTEGER NOT NULL DEFAULT 0,
+    start_body_battery INTEGER NOT NULL DEFAULT 0, end_body_battery INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (device_id, start_ms)
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS restless_moments_sample (
     device_id INTEGER NOT NULL, ts_ms INTEGER NOT NULL, count INTEGER NOT NULL,
     PRIMARY KEY (device_id, ts_ms)

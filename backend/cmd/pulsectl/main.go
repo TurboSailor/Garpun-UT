@@ -367,7 +367,7 @@ func cmdReimport(log *slog.Logger, args []string) error {
 				continue
 			}
 			ok++
-			totals[res.FileType] += res.Activity + res.Stress + res.SleepStages
+			totals[res.FileType] += res.Activity + res.Stress + res.SleepStages + res.SleepSessions
 		}
 		fmt.Printf("  reimported %d files (%d failed)\n", ok, failed)
 		for kind, n := range totals {

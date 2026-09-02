@@ -65,17 +65,18 @@ func New(db *store.DB, log *slog.Logger) *Importer {
 
 // Result reports what one file contributed.
 type Result struct {
-	FileType    string `json:"fileType"`
-	Records     int    `json:"records"`
-	Activity    int    `json:"activitySamples"`
-	Stress      int    `json:"stress"`
-	BodyEnergy  int    `json:"bodyEnergy"`
-	Spo2        int    `json:"spo2"`
-	Respiration int    `json:"respiration"`
-	SleepStages int    `json:"sleepStages"`
-	HRV         int    `json:"hrv"`
-	Workouts    int    `json:"workouts"`
-	Metrics     int    `json:"metrics"`
+	FileType      string `json:"fileType"`
+	Records       int    `json:"records"`
+	Activity      int    `json:"activitySamples"`
+	Stress        int    `json:"stress"`
+	BodyEnergy    int    `json:"bodyEnergy"`
+	Spo2          int    `json:"spo2"`
+	Respiration   int    `json:"respiration"`
+	SleepStages   int    `json:"sleepStages"`
+	SleepSessions int    `json:"sleepSessions"`
+	HRV           int    `json:"hrv"`
+	Workouts      int    `json:"workouts"`
+	Metrics       int    `json:"metrics"`
 }
 
 // Import decodes data and persists everything it recognises. The caller passes
@@ -101,20 +102,39 @@ func (im *Importer) Import(deviceID int64, subType uint8, data []byte) (*Result,
 	switch res.FileType {
 	case "MONITOR", "MONITOR_A", "MONITOR_DAILY":
 		im.importMonitor(deviceID, f, res)
-	case "SLEEP":
-		im.importSleep(deviceID, f, res)
 	case "HRV_STATUS":
 		im.importHRV(deviceID, f, res)
-	case "METRICS":
-		// Already covered by importMetrics.
 	case "ACTIVITY":
 		im.importActivity(deviceID, f, res)
+	case "SLEEP", "METRICS":
+		// Handled by the content check below.
 	default:
 		// Files such as CHANGELOG carry no health data; battery and metrics
 		// above are all we want from them.
 		im.log.Debug("importer: no specific handler", "type", res.FileType)
 	}
+
+	// Sleep is not confined to the SLEEP file. The Forerunner 255 never offers
+	// that file over the classic transfer and ships the nightly summary inside
+	// METRICS instead, so dispatch on what the file actually contains.
+	if hasSleepRecords(f) {
+		im.importSleep(deviceID, f, res)
+	}
 	return res, nil
+}
+
+// hasSleepRecords reports whether a file carries any sleep message at all, so
+// the sleep pass runs exactly on the files that have something to give.
+func hasSleepRecords(f *fit.File) bool {
+	for _, msg := range []uint16{
+		fit.MsgSleepStage, fit.MsgSleepStats, fit.MsgSleepDataRaw,
+		fit.MsgSleepRestless, fit.MsgDailySleep,
+	} {
+		if len(f.Of(msg)) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func fileTypeName(f *fit.File, subType uint8) string {
@@ -465,21 +485,45 @@ func (im *Importer) importSleep(deviceID int64, f *fit.File, res *Result) {
 		return r.Timestamp, float64(v), true
 	})
 
-	var naps []store.Nap
+	// DAILY_SLEEP is the nightly summary the watch computes on its own: window,
+	// score and body battery. It is not a nap, and its timestamps are
+	// sleep_start_time/sleep_end_time - reading start_timestamp/end_timestamp
+	// silently found nothing. On devices that never expose the per-stage SLEEP
+	// file this record is the whole night.
+	var sessions []store.SleepSession
+	var scores []store.Point
 	for _, r := range f.Of(fit.MsgDailySleep) {
-		start, ok1 := r.Int("start_timestamp")
-		end, ok2 := r.Int("end_timestamp")
+		start, ok1 := r.Int("sleep_start_time")
+		end, ok2 := r.Int("sleep_end_time")
 		if !ok1 || !ok2 || end <= start {
 			continue
 		}
-		if deleted, ok := r.Int("deleted"); ok && deleted == 1 {
-			continue
+		s := store.SleepSession{StartMs: start * 1000, EndMs: end * 1000}
+		// awake_duration is seconds spent awake inside the window.
+		if v, ok := r.Int("awake_duration"); ok && v > 0 {
+			s.AwakeMs = v * 1000
 		}
-		naps = append(naps, store.Nap{StartMs: start * 1000, EndMs: end * 1000})
+		if v, ok := r.Int("sleep_score"); ok && v > 0 {
+			s.Score = int(v)
+			scores = append(scores, store.Point{TsMs: end * 1000, Value: float64(v)})
+		}
+		if v, ok := r.Int("sleep_start_body_battery"); ok {
+			s.StartBodyBattery = int(v)
+		}
+		if v, ok := r.Int("sleep_end_body_battery"); ok {
+			s.EndBodyBattery = int(v)
+		}
+		sessions = append(sessions, s)
 	}
-	if err := im.db.PutNaps(deviceID, naps); err != nil {
-		im.log.Error("importer: naps", "err", err)
+	if err := im.db.PutSleepSessions(deviceID, sessions); err != nil {
+		im.log.Error("importer: sleep sessions", "err", err)
 	}
+	if len(scores) > 0 {
+		if err := im.db.PutSeries("sleep_score", deviceID, scores); err != nil {
+			im.log.Error("importer: sleep score", "err", err)
+		}
+	}
+	res.SleepSessions = len(sessions)
 }
 
 // -------------------------------------------------------------------- hrv ---

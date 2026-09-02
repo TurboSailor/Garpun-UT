@@ -237,6 +237,11 @@ func (s *Session) onDirectory(data []byte) {
 		if e.FileIndex == 0 && e.FileDataType == 0 && e.FileSubType == 0 && e.FileSize == 0 {
 			continue // all-zero padding record
 		}
+		s.log.Debug("garmin: directory entry", "index", e.FileIndex,
+			"type", e.FileDataType, "subtype", e.FileSubType,
+			"name", FileTypeName(e.FileDataType, e.FileSubType),
+			"size", e.FileSize, "flags", e.FileFlags, "specific", e.SpecificFlags,
+			"ts", e.Timestamp)
 		ft, known := LookupFileType(e.FileDataType, e.FileSubType)
 		if !known {
 			s.log.Debug("garmin: unknown file type in directory",

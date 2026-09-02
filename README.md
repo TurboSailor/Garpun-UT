@@ -38,6 +38,21 @@ make logs      # journal + pulsed.log
 Пароль sudo на телефоне по умолчанию читается из `PULSE_SUDO_PASS`
 (см. `scripts/deploy.sh`).
 
+## Жизненный цикл демона
+
+`run.sh` поднимает `pulsed` (и `pulse-wdnotify`) не своим потомком, а отдельными
+транзиентными юнитами `systemd --user`:
+
+```bash
+systemctl --user status pulse-pulsed pulse-wdnotify
+```
+
+Это обязательно, а не стилистика: Lomiri усыпляет фоновое приложение через
+SIGSTOP всему cgroup его app-launch-юнита, а затем гасит юнит целиком
+(`KillMode=control-group`). Демон-потомок (пусть и через `setsid`) остаётся в
+том же cgroup — замерзает посреди синхронизации вместе с приложением. Свой юнит
+= свой cgroup, поэтому синхронизация и уведомления живут при закрытом UI.
+
 ## Состояние
 
 Проверено на Nothing Phone 1 (UT 24.04) + Garmin Forerunner 255:
