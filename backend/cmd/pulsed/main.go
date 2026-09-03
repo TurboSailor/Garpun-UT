@@ -28,11 +28,10 @@ import (
 
 func main() {
 	var (
-		addr     = flag.String("addr", "127.0.0.1:21830", "HTTP listen address")
-		dbPath   = flag.String("db", defaultDBPath(), "database file")
-		debug    = flag.Bool("debug", false, "verbose logging")
-		noWatch  = flag.Bool("no-bluetooth", false, "run the API without touching Bluetooth")
-		waydroid = flag.String("waydroid", "192.168.240.112:5555", "Waydroid adb endpoint for notification capture")
+		addr    = flag.String("addr", "127.0.0.1:21830", "HTTP listen address")
+		dbPath  = flag.String("db", defaultDBPath(), "database file")
+		debug   = flag.Bool("debug", false, "verbose logging")
+		noWatch = flag.Bool("no-bluetooth", false, "run the API without touching Bluetooth")
 	)
 	flag.Parse()
 
@@ -42,7 +41,7 @@ func main() {
 	}
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 
-	if err := run(log, *addr, *dbPath, *waydroid, *noWatch); err != nil {
+	if err := run(log, *addr, *dbPath, *noWatch); err != nil {
 		log.Error("pulsed exited", "err", err)
 		os.Exit(1)
 	}
@@ -63,7 +62,7 @@ func defaultDBPath() string {
 	return filepath.Join(base, "pulse", "pulse.db")
 }
 
-func run(log *slog.Logger, addr, dbPath, waydroidAddr string, noBluetooth bool) error {
+func run(log *slog.Logger, addr, dbPath string, noBluetooth bool) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -74,13 +73,13 @@ func run(log *slog.Logger, addr, dbPath, waydroidAddr string, noBluetooth bool) 
 	defer db.Close()
 	log.Info("database ready", "path", db.Path())
 
-	// Phone-side integrations. Each one is optional: a missing session bus or
-	// a stopped Waydroid container must not keep the watch from syncing.
+	// Phone-side integrations. Each one is optional: a missing session bus
+	// must not keep the watch from syncing.
 	//
-	// Android notifications are not polled here: pulse-wdnotify relays them
-	// into the Lomiri shade, and the freedesktop monitor below picks them up
-	// from there. That keeps one source of truth and puts them in the phone's
-	// own notification list instead of only on the watch.
+	// Android notifications are nobody's business here: the separate
+	// waydnotif.turbosailor relay posts them into the Lomiri shade, and the
+	// freedesktop monitor below observes them from there. One owner per job,
+	// so nothing is posted or forwarded twice.
 	bridge, err := uxbridge.New(log, uxbridge.Options{
 		EnableFreedesktop: true,
 		EnableCalls:       true,
@@ -119,17 +118,9 @@ func run(log *slog.Logger, addr, dbPath, waydroidAddr string, noBluetooth bool) 
 		deps.MusicCommand = bridge.MusicCommand
 		deps.AcceptCall = bridge.AcceptCall
 		deps.RejectCall = bridge.RejectCall
+		deps.DismissNotification = bridge.DismissNotification
 		deps.Notifications = adaptNotifications(ctx, bridge)
 		defer bridge.Close()
-	}
-
-	var (
-		feed api.NotificationFeed
-		sink api.NotificationSink
-	)
-	if bridge != nil {
-		feed = notificationFeed{bridge}
-		sink = notificationSink{bridge}
 	}
 
 	if !noBluetooth {
@@ -154,7 +145,7 @@ func run(log *slog.Logger, addr, dbPath, waydroidAddr string, noBluetooth bool) 
 
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           api.New(db, mgr, log, feed, sink).Handler(),
+		Handler:           api.New(db, mgr, log).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	ln, err := net.Listen("tcp", addr)
@@ -225,33 +216,4 @@ func adaptNotifications(ctx context.Context, b *uxbridge.Bridge) <-chan daemon.N
 		}
 	}()
 	return out
-}
-
-// notificationSink lets a sibling process hand over a notification it already
-// delivered to the phone, so the watch mirrors it. pulse-wdnotify relays
-// Android notifications through the push service, which this daemon cannot
-// observe on the session bus.
-type notificationSink struct{ b *uxbridge.Bridge }
-
-func (s notificationSink) InjectJSON(key, source, appID, appName, title, body string, removed bool) error {
-	s.b.Inject(key, uxbridge.Notification{
-		Source:  source,
-		AppID:   appID,
-		AppName: appName,
-		Title:   title,
-		Body:    body,
-		Removed: removed,
-	})
-	return nil
-}
-
-// notificationFeed exposes the bridge history to the API.
-type notificationFeed struct{ b *uxbridge.Bridge }
-
-func (f notificationFeed) RecentJSON(limit int) any {
-	items := f.b.Recent(limit)
-	if items == nil {
-		return []any{}
-	}
-	return items
 }

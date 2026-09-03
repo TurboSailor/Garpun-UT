@@ -44,6 +44,10 @@ type Deps struct {
 	// AcceptCall and RejectCall answer watch call actions.
 	AcceptCall func() error
 	RejectCall func() error
+	// DismissNotification clears a notification on the phone after the user
+	// dismissed it on the watch. The retraction that follows is what takes
+	// the card off the watch as well.
+	DismissNotification func(id int32) error
 }
 
 // NotifyEvent is one phone notification, or its removal.
@@ -99,16 +103,20 @@ type Manager struct {
 
 	events *EventHub
 
-	mu            sync.Mutex
-	session       *garmin.Session
-	dev           *ble.Device
-	deviceRow     *store.Device
-	battery       int
-	syncing       bool
-	progress      Progress
-	scanResults   map[string]ScanResult
-	scanning      bool
+	mu          sync.Mutex
+	session     *garmin.Session
+	dev         *ble.Device
+	deviceRow   *store.Device
+	battery     int
+	syncing     bool
+	progress    Progress
+	scanResults map[string]ScanResult
+	scanning    bool
+	// autoReconnect and wantAddr are the standing intent to hold a link with
+	// one watch; connecting guards against two overlapping attempts.
 	autoReconnect bool
+	connecting    bool
+	wantAddr      string
 	lastWeather   time.Time
 
 	ctx    context.Context
@@ -345,7 +353,23 @@ func (m *Manager) Connect(addr string) error {
 		m.mu.Unlock()
 		return fmt.Errorf("daemon: already connected")
 	}
+	// A connect takes seconds; the startup attempt and reconnectLoop would
+	// otherwise overlap and open two transports to the same watch.
+	if m.connecting {
+		m.mu.Unlock()
+		return fmt.Errorf("daemon: connect already in progress")
+	}
+	m.connecting = true
+	// Remember the target before the attempt: a first connect that fails must
+	// still be retried by reconnectLoop.
+	m.wantAddr = addr
+	m.autoReconnect = true
 	m.mu.Unlock()
+	defer func() {
+		m.mu.Lock()
+		m.connecting = false
+		m.mu.Unlock()
+	}()
 
 	dev, err := m.adapter.Device(addr)
 	if err != nil {
@@ -355,6 +379,11 @@ func (m *Manager) Connect(addr string) error {
 	defer cancel()
 	if err := dev.Connect(ctx); err != nil {
 		return fmt.Errorf("daemon: connect %s: %w", addr, err)
+	}
+	// Without Trusted bluetoothd refuses links the watch initiates itself,
+	// which is how a Garmin comes back after wandering out of range.
+	if err := dev.SetTrusted(true); err != nil {
+		m.log.Debug("daemon: set trusted", "err", err)
 	}
 
 	trCtx, trCancel := context.WithTimeout(m.ctx, 30*time.Second)
@@ -391,16 +420,27 @@ func (m *Manager) Connect(addr string) error {
 
 	m.wireHooks(sess, row)
 
+	// BlueZ is the only reliable witness of a dropped ACL link: without this
+	// the session stayed alive forever, every write failed with "Not
+	// connected" and no reconnect was ever attempted. The callback runs on the
+	// shared signal pump, so the teardown (which makes D-Bus calls of its own)
+	// has to happen on another goroutine.
+	cancelDisc := dev.OnDisconnect(func() {
+		go func() {
+			m.log.Info("daemon: link lost", "addr", addr)
+			sess.Close()
+		}()
+	})
+
 	m.mu.Lock()
 	m.session = sess
 	m.dev = dev
 	m.deviceRow = row
-	m.autoReconnect = true
 	m.battery = -1
 	m.mu.Unlock()
 
 	m.wg.Add(1)
-	go m.sessionLoop(sess, dev, row)
+	go m.sessionLoop(sess, dev, row, cancelDisc)
 	return nil
 }
 
@@ -438,13 +478,18 @@ func (m *Manager) wireHooks(sess *garmin.Session, row *store.Device) {
 		})
 	}
 
+	// The file number alone is not unique across types: a SLEEP file could
+	// collide with a MONITOR one, count as "already have" and get archived on
+	// the watch unread — losing that night for good.
 	sess.Hooks.HaveFile = func(entry garmin.DirectoryEntry) bool {
-		return m.db.HasFitFile(deviceID, int(entry.FileNumber))
+		return m.db.HasFitFile(deviceID,
+			int(entry.FileDataType), int(entry.FileSubType), int(entry.FileNumber))
 	}
 
 	sess.Hooks.FileDownloaded = func(entry garmin.DirectoryEntry, data []byte) error {
 		f := &store.FitFile{
 			DeviceID:     deviceID,
+			FileIndex:    int(entry.FileIndex),
 			FileNumber:   int(entry.FileNumber),
 			DataType:     int(entry.FileDataType),
 			SubType:      int(entry.FileSubType),
@@ -480,14 +525,16 @@ func semicirclesToDegrees(v int32) float64 {
 	return float64(v) * (180.0 / 2147483648.0)
 }
 
-func (m *Manager) sessionLoop(sess *garmin.Session, dev *ble.Device, row *store.Device) {
+func (m *Manager) sessionLoop(sess *garmin.Session, dev *ble.Device, row *store.Device, cancelDisc func()) {
 	defer m.wg.Done()
 	defer func() {
+		cancelDisc()
 		m.mu.Lock()
 		if m.session == sess {
 			m.session = nil
 			m.dev = nil
 			m.syncing = false
+			m.progress = Progress{}
 		}
 		m.mu.Unlock()
 		sess.Close()
@@ -583,6 +630,7 @@ func (m *Manager) handleNotificationAction(data any) {
 		return
 	}
 	action, _ := d["action"].(uint8)
+	id, _ := d["id"].(int32)
 	switch action {
 	case gfdi.ActionAcceptIncomingCall:
 		if m.deps.AcceptCall != nil {
@@ -596,6 +644,27 @@ func (m *Manager) handleNotificationAction(data any) {
 				m.log.Warn("daemon: reject call", "err", err)
 			}
 		}
+	case gfdi.ActionDismissNotification:
+		// Take it off the watch first and unconditionally: the phone side may
+		// have forgotten the card (history evicted, no server id captured),
+		// and a dismissal that leaves the entry on the wrist is exactly the
+		// complaint this handles.
+		m.mu.Lock()
+		sess := m.session
+		m.mu.Unlock()
+		if sess != nil {
+			if err := sess.DropNotification(id); err != nil {
+				m.log.Warn("daemon: notification removal not delivered", "err", err, "id", id)
+			}
+		}
+		if m.deps.DismissNotification == nil {
+			return
+		}
+		if err := m.deps.DismissNotification(id); err != nil {
+			m.log.Warn("daemon: dismiss notification", "err", err, "id", id)
+			return
+		}
+		m.log.Info("daemon: notification dismissed from watch", "id", id)
 	}
 }
 
@@ -632,11 +701,12 @@ func (m *Manager) setBattery(deviceID int64, level int) {
 	}
 }
 
-// Disconnect drops the current session.
+// Disconnect drops the current session and stops trying to hold the link.
 func (m *Manager) Disconnect() {
 	m.mu.Lock()
 	sess := m.session
 	m.autoReconnect = false
+	m.wantAddr = ""
 	m.mu.Unlock()
 	if sess != nil {
 		sess.Close()
@@ -759,11 +829,19 @@ func (m *Manager) notificationLoop() {
 				continue
 			}
 			if n.Removed {
-				sess.RemoveNotification(n.Content.ID, n.Content.Category)
+				if err := sess.RemoveNotification(n.Content.ID, n.Content.Category); err != nil {
+					m.log.Warn("daemon: notification removal not delivered",
+						"err", err, "id", n.Content.ID, "app", n.Content.AppIdentifier)
+					continue
+				}
 				m.log.Info("daemon: notification removed on watch",
 					"id", n.Content.ID, "app", n.Content.AppIdentifier)
 			} else {
-				sess.SendNotification(n.Content)
+				if err := sess.SendNotification(n.Content); err != nil {
+					m.log.Warn("daemon: notification not delivered",
+						"err", err, "id", n.Content.ID, "app", n.Content.AppIdentifier)
+					continue
+				}
 				if sess.NotificationsSubscribed() {
 					m.log.Info("daemon: notification sent to watch",
 						"id", n.Content.ID, "app", n.Content.AppIdentifier, "title", n.Content.Title)
@@ -797,9 +875,14 @@ func (m *Manager) autoSyncLoop() {
 			}
 			m.mu.Lock()
 			sess := m.session
+			dev := m.dev
 			syncing := m.syncing
 			m.mu.Unlock()
 			if sess == nil || syncing || !sess.Initialized() {
+				continue
+			}
+			// Never fire into a link BlueZ already gave up on.
+			if dev != nil && !dev.Connected() {
 				continue
 			}
 			last = time.Now()
@@ -809,28 +892,45 @@ func (m *Manager) autoSyncLoop() {
 }
 
 // reconnectLoop brings the session back after the watch wanders out of range.
+// The delay grows 2 s -> 64 s like upstream AutoConnectIntervalReceiver and
+// resets once a link is up again, so a watch left at home does not keep the
+// adapter busy.
 func (m *Manager) reconnectLoop() {
 	defer m.wg.Done()
-	ticker := time.NewTicker(20 * time.Second)
-	defer ticker.Stop()
+	const (
+		minDelay = 2 * time.Second
+		maxDelay = 64 * time.Second
+	)
+	delay := minDelay
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
 	for {
 		select {
 		case <-m.ctx.Done():
 			return
-		case <-ticker.C:
+		case <-timer.C:
 			m.mu.Lock()
-			need := m.autoReconnect && m.session == nil && m.deviceRow != nil
-			addr := ""
-			if m.deviceRow != nil {
+			addr := m.wantAddr
+			if addr == "" && m.deviceRow != nil {
 				addr = m.deviceRow.Address
 			}
+			need := m.autoReconnect && m.session == nil && addr != ""
 			m.mu.Unlock()
 			if !need {
+				delay = minDelay
+				timer.Reset(delay)
 				continue
 			}
 			if err := m.Connect(addr); err != nil {
-				m.log.Debug("daemon: reconnect failed", "err", err)
+				m.log.Debug("daemon: reconnect failed", "err", err, "retryIn", delay.String())
+				if delay < maxDelay {
+					delay *= 2
+				}
+			} else {
+				m.log.Info("daemon: reconnected", "addr", addr)
+				delay = minDelay
 			}
+			timer.Reset(delay)
 		}
 	}
 }

@@ -34,7 +34,6 @@ QtObject {
     property var health: null
     property var sleep: null
     property var workouts: null
-    property var notifications: null
     property var devices: null
     property var scan: []
     property var pairing: ({ pending: false })
@@ -45,9 +44,9 @@ QtObject {
     property bool healthLoading: false
     property bool sleepLoading: false
     property bool workoutsLoading: false
-    property bool notificationsLoading: false
 
-    property int healthDays: 7
+    // The health screen opens on today; 7 and 30 day views are one tap away.
+    property int healthDays: 1
 
     // ---- settings --------------------------------------------------------
     property var settings: ({
@@ -147,18 +146,6 @@ QtObject {
         }, function (msg) {
             markOffline(msg);
             workoutsLoading = false;
-        });
-    }
-
-    function loadNotifications() {
-        notificationsLoading = true;
-        Api.notifications(50, function (r) {
-            markOnline();
-            notifications = r || [];
-            notificationsLoading = false;
-        }, function (msg) {
-            markOffline(msg);
-            notificationsLoading = false;
         });
     }
 
@@ -344,13 +331,6 @@ QtObject {
             if (data) { settings = data; applyAppearance(); }
             else loadSettings();
             return;
-        case "notification":
-            if (data && notifications !== null) {
-                var list = notifications.slice();
-                list.unshift(data);
-                notifications = list.slice(0, 50);
-            }
-            return;
         case "sync_started":
         case "sync_progress":
         case "battery":
@@ -391,7 +371,6 @@ QtObject {
         loadHealth();
         loadSleep();
         loadWorkouts();
-        loadNotifications();
         openStream();
         statusPoll.start();
     }

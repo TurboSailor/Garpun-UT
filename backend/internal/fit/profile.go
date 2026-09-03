@@ -161,4 +161,5 @@ const (
 	MsgDailySleep       uint16 = 384
 	MsgSleepDemand      uint16 = 410
 	MsgSleepSummary     uint16 = 411
+	MsgNap              uint16 = 412
 )

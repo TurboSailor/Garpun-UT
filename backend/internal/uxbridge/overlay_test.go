@@ -109,7 +109,7 @@ func TestParseNotifyCallReportsOverlay(t *testing.T) {
 		},
 		int32(-1),
 	}
-	n, overlay, ok := parseNotifyCall(volume)
+	n, _, overlay, ok := parseNotifyCall(volume)
 	if !ok {
 		t.Fatal("expected the call to parse")
 	}
@@ -122,7 +122,7 @@ func TestParseNotifyCallReportsOverlay(t *testing.T) {
 		map[string]dbus.Variant{"desktop-entry": dbus.MakeVariant("telegram")},
 		int32(-1),
 	}
-	n, overlay, ok = parseNotifyCall(message)
+	n, _, overlay, ok = parseNotifyCall(message)
 	if !ok {
 		t.Fatal("expected the call to parse")
 	}

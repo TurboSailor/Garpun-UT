@@ -9,10 +9,13 @@ package uxbridge
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/godbus/dbus/v5"
 
 	"pulse/backend/internal/garmin"
 	"pulse/backend/internal/gfdi"
@@ -46,32 +49,16 @@ type Notification struct {
 
 // Options configures which sources the bridge tries to start. Every source is
 // optional: an unavailable one is logged once and skipped.
+//
+// The bridge does not talk to the Waydroid container. Android notifications
+// reach this phone through a dedicated relay (waydnotif.turbosailor), which posts
+// them into the Lomiri shade; the freedesktop source below then observes them
+// like any other notification. Polling the container here as well would post
+// and forward everything twice.
 type Options struct {
-	EnableFreedesktop    bool
-	EnableWaydroid       bool
-	EnableCalls          bool
-	EnableMusic          bool
-	WaydroidAddr         string
-	WaydroidPollInterval time.Duration
-
-	// PrivilegedRunner runs a command as root. It is used as the fallback path
-	// into the Waydroid container when its adbd demands authentication. May be
-	// nil, in which case that fallback is simply unavailable.
-	PrivilegedRunner func(context.Context, ...string) ([]byte, error)
-}
-
-const (
-	defaultWaydroidAddr = "192.168.240.112:5555"
-	defaultPollInterval = 2 * time.Second
-)
-
-func (o *Options) applyDefaults() {
-	if o.WaydroidAddr == "" {
-		o.WaydroidAddr = defaultWaydroidAddr
-	}
-	if o.WaydroidPollInterval <= 0 {
-		o.WaydroidPollInterval = defaultPollInterval
-	}
+	EnableFreedesktop bool
+	EnableCalls       bool
+	EnableMusic       bool
 }
 
 // Bridge fans notification sources into a single channel. All exported methods
@@ -90,6 +77,20 @@ type Bridge struct {
 	nextID  int32
 	appName map[string]string
 
+	// fdCall is a plain session bus connection, used to close a notification
+	// on the phone when the watch dismisses it. The monitor connection cannot
+	// make calls.
+	fdCall *dbus.Conn
+	// fdPending holds Notify calls whose reply (and therefore the server's own
+	// notification id) has not arrived yet, keyed by caller and serial.
+	fdPending map[fdCallKey]int32
+	fdPendOrd []fdCallKey
+	// fdIDs and fdServer translate between the notification server's ids and
+	// ours, which is what makes retraction and replacement possible.
+	fdIDs    map[uint32]int32
+	fdServer map[int32]uint32
+	fdIDOrd  []uint32
+
 	calls *callSource
 	music *musicSource
 
@@ -105,27 +106,25 @@ func New(log *slog.Logger, opts Options) (*Bridge, error) {
 	if log == nil {
 		log = slog.Default()
 	}
-	opts.applyDefaults()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	b := &Bridge{
-		log:     log,
-		opts:    opts,
-		out:     make(chan Notification, 256),
-		ids:     map[string]int32{},
-		nextID:  1,
-		appName: map[string]string{},
-		ctx:     ctx,
-		cancel:  cancel,
+		log:       log,
+		opts:      opts,
+		out:       make(chan Notification, 256),
+		ids:       map[string]int32{},
+		nextID:    1,
+		appName:   map[string]string{},
+		fdPending: map[fdCallKey]int32{},
+		fdIDs:     map[uint32]int32{},
+		fdServer:  map[int32]uint32{},
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 
 	if opts.EnableFreedesktop {
 		if err := b.startFreedesktop(); err != nil {
 			log.Warn("uxbridge: freedesktop notifications unavailable", "err", err)
 		}
-	}
-	if opts.EnableWaydroid {
-		b.startWaydroid()
 	}
 	if opts.EnableCalls {
 		if err := b.startCalls(); err != nil {
@@ -155,8 +154,137 @@ func (b *Bridge) Close() {
 		if b.music != nil {
 			b.music.close()
 		}
+		b.mu.Lock()
+		callConn := b.fdCall
+		b.fdCall = nil
+		b.mu.Unlock()
+		if callConn != nil {
+			callConn.Close()
+		}
 		close(b.out)
 	})
+}
+
+// -------------------------------------------------- freedesktop id mapping ---
+
+// fdCallKey identifies one pending Notify call: the caller's unique bus name
+// plus the call serial, which is what the reply refers back to.
+type fdCallKey struct {
+	caller string
+	serial uint32
+}
+
+// fdPendingLimit caps the in-flight Notify calls the bridge remembers. Replies
+// come back in milliseconds; anything older is a caller that never got one.
+const fdPendingLimit = 64
+
+func (b *Bridge) rememberNotifyCall(caller string, serial uint32, id int32) {
+	key := fdCallKey{caller: caller, serial: serial}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if _, ok := b.fdPending[key]; !ok {
+		b.fdPendOrd = append(b.fdPendOrd, key)
+	}
+	b.fdPending[key] = id
+	for len(b.fdPendOrd) > fdPendingLimit {
+		delete(b.fdPending, b.fdPendOrd[0])
+		b.fdPendOrd = b.fdPendOrd[1:]
+	}
+}
+
+// resolveNotifyCall records the server id a Notify call was answered with.
+func (b *Bridge) resolveNotifyCall(caller string, serial, serverID uint32) {
+	key := fdCallKey{caller: caller, serial: serial}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	id, ok := b.fdPending[key]
+	if !ok {
+		return
+	}
+	delete(b.fdPending, key)
+	for i, k := range b.fdPendOrd {
+		if k == key {
+			b.fdPendOrd = append(b.fdPendOrd[:i], b.fdPendOrd[i+1:]...)
+			break
+		}
+	}
+	if old, ok := b.fdServer[id]; ok && old != serverID {
+		delete(b.fdIDs, old)
+	}
+	if _, ok := b.fdIDs[serverID]; !ok {
+		b.fdIDOrd = append(b.fdIDOrd, serverID)
+	}
+	b.fdIDs[serverID] = id
+	b.fdServer[id] = serverID
+	for len(b.fdIDOrd) > historyLimit {
+		stale := b.fdIDOrd[0]
+		b.fdIDOrd = b.fdIDOrd[1:]
+		if bridgeID, ok := b.fdIDs[stale]; ok {
+			delete(b.fdIDs, stale)
+			if b.fdServer[bridgeID] == stale {
+				delete(b.fdServer, bridgeID)
+			}
+		}
+	}
+}
+
+// bridgeIDForServer maps a server side notification id back to ours.
+func (b *Bridge) bridgeIDForServer(serverID uint32) (int32, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	id, ok := b.fdIDs[serverID]
+	return id, ok
+}
+
+// retractServerNotification turns a card the shell closed into a retraction
+// for the watch. Repeated calls for the same notification are harmless: the
+// history entry is already marked removed and nothing is emitted twice.
+func (b *Bridge) retractServerNotification(serverID uint32) {
+	id, ok := b.bridgeIDForServer(serverID)
+	if !ok {
+		return
+	}
+	b.retract(id)
+}
+
+// retract emits the removal of a notification the bridge still holds live.
+func (b *Bridge) retract(id int32) {
+	n, live := b.find(id)
+	if !live {
+		return
+	}
+	b.emit(Notification{
+		ID:       id,
+		Source:   n.Source,
+		AppID:    n.AppID,
+		AppName:  n.AppName,
+		Category: n.Category,
+		Removed:  true,
+	})
+}
+
+// DismissNotification is what the watch asks for when the user clears a card
+// there: close it on the phone as well, then retract it so the watch list and
+// the phone shade stay in step. The close is best effort — a card posted by
+// another app may already be gone — but the retraction always happens, which
+// is what stops notifications piling up on the wrist.
+func (b *Bridge) DismissNotification(id int32) error {
+	b.mu.Lock()
+	conn := b.fdCall
+	serverID, haveServer := b.fdServer[id]
+	b.mu.Unlock()
+
+	var err error
+	if conn != nil && haveServer {
+		obj := conn.Object(ifaceNotifications, "/org/freedesktop/Notifications")
+		call := obj.Call(ifaceNotifications+".CloseNotification", 0, serverID)
+		err = call.Err
+	}
+	b.retract(id)
+	if err != nil {
+		return fmt.Errorf("uxbridge: close notification %d: %w", serverID, err)
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------- history ---
@@ -181,30 +309,6 @@ func (b *Bridge) forgetKey(key string) {
 	b.mu.Lock()
 	delete(b.ids, key)
 	b.mu.Unlock()
-}
-
-// Inject publishes a notification the bridge did not observe itself. It is how
-// a sibling process — pulse-wdnotify relaying Android notifications through
-// the push service — hands one over: that path never touches
-// org.freedesktop.Notifications, so the monitor cannot see it.
-//
-// key namespaces the entry so repeats update in place and a later removal
-// resolves to the same id.
-func (b *Bridge) Inject(key string, n Notification) Notification {
-	if key == "" {
-		key = "ext:" + n.Source + ":" + n.AppID + ":" + n.Title
-	} else {
-		key = "ext:" + key
-	}
-	n.ID = b.idFor(key)
-	if n.Category == 0 {
-		n.Category = categoryFor(n.AppID, n.AppName)
-	}
-	if n.Removed {
-		defer b.forgetKey(key)
-	}
-	b.emit(n)
-	return n
 }
 
 func (b *Bridge) emit(n Notification) {

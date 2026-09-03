@@ -42,8 +42,8 @@ Item {
         Segmented {
             width: parent.width
             options: [
+                { key: "1", label: I18n.t("health.today") },
                 { key: "7", label: I18n.t("health.days_7") },
-                { key: "14", label: I18n.t("health.days_14") },
                 { key: "30", label: I18n.t("health.days_30") }
             ]
             current: "" + Store.healthDays

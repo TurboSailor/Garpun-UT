@@ -1,9 +1,13 @@
 package ble
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -64,12 +68,21 @@ func (c *Char) Read() ([]byte, error) {
 // Write sends one ATT payload. It uses the acquired write socket when
 // available, otherwise WriteValue with the strongest type the characteristic
 // supports.
+//
+// BlueZ answers "In Progress" while an earlier ATT operation on the same
+// connection is still outstanding, which happens on bursts of GFDI frames.
+// That is back pressure, not a failure, so the write is retried briefly. A
+// dropped link, in contrast, is reported as ErrNotConnected and must end the
+// session.
 func (c *Char) Write(b []byte) error {
 	c.mu.Lock()
 	fd := c.writeFD
 	c.mu.Unlock()
 	if fd != nil {
 		if _, err := fd.Write(b); err != nil {
+			if errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENOTCONN) {
+				return fmt.Errorf("ble: write sock %s: %w", c.uuid, ErrNotConnected)
+			}
 			return fmt.Errorf("ble: write sock %s: %w", c.uuid, err)
 		}
 		return nil
@@ -80,10 +93,35 @@ func (c *Char) Write(b []byte) error {
 		typ = "command"
 	}
 	opts := map[string]dbus.Variant{"type": dbus.MakeVariant(typ)}
-	if err := c.obj().Call(ifaceChar+".WriteValue", 0, b, opts).Err; err != nil {
+	const busyRetries = 8
+	for attempt := 0; ; attempt++ {
+		err := c.obj().Call(ifaceChar+".WriteValue", 0, b, opts).Err
+		if err == nil {
+			return nil
+		}
+		switch dbusErrorName(err) {
+		case "org.bluez.Error.InProgress":
+			if attempt < busyRetries {
+				time.Sleep(25 * time.Millisecond)
+				continue
+			}
+		case "org.bluez.Error.NotConnected", "org.bluez.Error.Failed":
+			// Failed covers "Not connected" reported by older bluetoothd.
+			if strings.Contains(err.Error(), "onnected") {
+				return fmt.Errorf("ble: write %s: %w", c.uuid, ErrNotConnected)
+			}
+		}
 		return fmt.Errorf("ble: write %s: %w", c.uuid, err)
 	}
-	return nil
+}
+
+// dbusErrorName reports the D-Bus error name of err, or "".
+func dbusErrorName(err error) string {
+	var dberr dbus.Error
+	if errors.As(err, &dberr) {
+		return dberr.Name
+	}
+	return ""
 }
 
 // AcquireWrite switches Write to the socket fast path. Returns the usable

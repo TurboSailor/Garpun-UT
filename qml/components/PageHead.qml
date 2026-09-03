@@ -11,7 +11,6 @@ Item {
     property string title: ""
     property bool showBack: false
     property string trailingGlyph: ""
-    property int trailingBadge: 0
     signal back()
     signal trailing()
 
@@ -91,17 +90,6 @@ Item {
             name: root.trailingGlyph
             size: units.gu(2.5)
             color: Pulse.text
-        }
-        Rectangle {
-            visible: root.trailingBadge > 0
-            anchors.right: parent.right
-            anchors.top: parent.top
-            width: units.gu(1.25)
-            height: width
-            radius: width / 2
-            color: Pulse.accent
-            border.width: units.dp(2)
-            border.color: Pulse.bg
         }
         MouseArea {
             anchors.fill: parent

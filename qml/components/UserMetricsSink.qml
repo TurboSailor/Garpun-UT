@@ -16,7 +16,7 @@ QtObject {
 
     // Must match applicationName / the click package name: the shell groups
     // the infographic entries by it.
-    readonly property string domain: "cc.zachy.pulse"
+    readonly property string domain: "pulse.turbosailor"
 
     readonly property Metric stepsMetric: Metric {
         name: "pulse-steps"

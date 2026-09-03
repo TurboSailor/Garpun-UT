@@ -2,11 +2,13 @@ package garmin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
+	"pulse/backend/internal/ble"
 	"pulse/backend/internal/fit"
 	"pulse/backend/internal/gfdi"
 )
@@ -66,9 +68,10 @@ type Session struct {
 	tr     Transport
 	events chan Event
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	ctx      context.Context
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
+	failOnce sync.Once
 
 	mu            sync.Mutex
 	deviceInfo    *gfdi.DeviceInformation
@@ -193,15 +196,37 @@ func (s *Session) emit(kind string, data any) {
 	}
 }
 
-func (s *Session) send(frame []byte) {
-	if err := s.tr.Send(frame); err != nil {
+// send writes one frame. Losing the link means the COBS stream is broken past
+// that point, so the session is torn down instead of logging the same error
+// for every later frame. Transient write errors are only logged: BlueZ back
+// pressure is not a dead watch.
+func (s *Session) send(frame []byte) error {
+	err := s.tr.Send(frame)
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, ble.ErrNotConnected) {
+		s.fail(err)
+	} else {
 		s.log.Error("garmin: send failed", "err", err)
 	}
+	return err
+}
+
+// fail ends the session once, whatever noticed the dead link first.
+func (s *Session) fail(err error) {
+	s.failOnce.Do(func() {
+		s.log.Warn("garmin: link lost", "err", err)
+		s.cancel()
+	})
 }
 
 func (s *Session) loop() {
 	defer s.wg.Done()
-	defer close(s.events)
+	defer func() {
+		s.emit(EventDisconnected, nil)
+		close(s.events)
+	}()
 	frames := s.tr.Frames()
 	for {
 		select {
@@ -209,7 +234,6 @@ func (s *Session) loop() {
 			return
 		case raw, ok := <-frames:
 			if !ok {
-				s.emit(EventDisconnected, nil)
 				return
 			}
 			f, err := gfdi.ParseFrame(raw)
@@ -413,8 +437,11 @@ func (s *Session) handleStatus(f *gfdi.Frame) {
 			s.mu.Lock()
 			s.supportedFile = types
 			s.mu.Unlock()
+			// This is the watch's own answer to "what can you hand over",
+			// which is the only way to tell an unsupported file type (sleep
+			// stages on some models) from one that is merely not offered yet.
 			for _, t := range types {
-				s.log.Debug("garmin: watch supports file type",
+				s.log.Info("garmin: watch supports file type",
 					"type", t.DataType, "subtype", t.SubType, "watchName", t.Name,
 					"name", FileTypeName(t.DataType, t.SubType))
 			}

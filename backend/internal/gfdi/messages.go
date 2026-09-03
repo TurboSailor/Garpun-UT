@@ -737,7 +737,9 @@ func DeviceSettings(settings []DeviceSetting) []byte {
 // SupportedFileTypesRequest builds 5031 (empty payload).
 func SupportedFileTypesRequest() []byte { return BuildFrame(MsgSupportedFileTypesRequest, nil) }
 
-// Filter builds 5007. Upstream always uses filter type 3.
+// Filter builds 5007. Upstream always uses filter type 3; type 0 was measured
+// on a Forerunner 255 and lists exactly the same files, so there is no way
+// back to a file the phone has already flagged ARCHIVE.
 func Filter() []byte {
 	w := NewWriter()
 	w.U8(3)

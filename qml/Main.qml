@@ -9,7 +9,7 @@ import "js/I18n.js" as I18n
 MainView {
     id: app
 
-    applicationName: "cc.zachy.pulse"
+    applicationName: "pulse.turbosailor"
     objectName: "pulseMain"
     anchorToKeyboard: true
     backgroundColor: Pulse.bg
@@ -125,7 +125,6 @@ MainView {
     Component {
         id: todayComponent
         TodayPage {
-            onOpenNotifications: app.push("notifications", null)
             onOpenWorkout: app.push("workout", workout)
             onOpenTab: app.selectTab(key)
         }
@@ -152,9 +151,7 @@ MainView {
 
     Component {
         id: deviceComponent
-        DevicePage {
-            onOpenNotifications: app.push("notifications", null)
-        }
+        DevicePage {}
     }
 
     // ---- nav --------------------------------------------------------------
@@ -189,17 +186,11 @@ MainView {
             anchors.fill: parent
             active: app.overlay.length > 0
             sourceComponent: {
-                if (app.overlay === "notifications") return notificationsComponent;
                 if (app.overlay === "workout") return workoutComponent;
                 if (app.overlay === "metric") return metricComponent;
                 return null;
             }
         }
-    }
-
-    Component {
-        id: notificationsComponent
-        NotificationsPage { onBack: app.pop() }
     }
 
     Component {

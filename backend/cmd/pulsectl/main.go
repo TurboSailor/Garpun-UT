@@ -12,11 +12,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"pulse/backend/internal/ble"
+	"pulse/backend/internal/fit"
 	"pulse/backend/internal/garmin"
 	"pulse/backend/internal/importer"
 	"pulse/backend/internal/store"
@@ -47,6 +50,8 @@ func main() {
 		err = cmdInfo(ctx, log)
 	case "reimport":
 		err = cmdReimport(log, os.Args[2:])
+	case "fitdump":
+		err = cmdFitdump(os.Args[2:])
 	default:
 		usage()
 	}
@@ -62,6 +67,8 @@ func usage() {
   pulsectl pair <MAC>                 bond with a watch (watch must be in pairing mode)
   pulsectl connect <MAC> [-sync] [-out DIR]
   pulsectl reimport [-db PATH]        rebuild samples from stored FIT files
+  pulsectl fitdump [-only MSG] FILE.fit... | [-db PATH] -id N | [-db PATH] -list
+                                      inspect a FIT file or a stored blob
   pulsectl info                       adapter status`)
 	os.Exit(2)
 }
@@ -373,6 +380,110 @@ func cmdReimport(log *slog.Logger, args []string) error {
 		for kind, n := range totals {
 			fmt.Printf("    %-12s %d rows\n", kind, n)
 		}
+	}
+	return nil
+}
+
+// cmdFitdump prints what a FIT file holds: the message histogram, and the
+// decoded fields of one message when -only is given. It reads a file from
+// disk or a blob out of the database, which after the watch archives a file
+// is the only copy left.
+func cmdFitdump(args []string) error {
+	fs := flag.NewFlagSet("fitdump", flag.ExitOnError)
+	dbPath := fs.String("db", defaultDBPath(), "database file, for -id and -list")
+	id := fs.Int64("id", 0, "dump the fit_file row with this id")
+	list := fs.Bool("list", false, "list stored files instead of dumping one")
+	only := fs.String("only", "", "dump the fields of this message (profile name or global number)")
+	fs.Parse(args)
+
+	if *list {
+		return listFitFiles(*dbPath)
+	}
+	if *id != 0 {
+		db, err := store.Open(*dbPath)
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+		f, err := db.FitFileByID(*id)
+		if err != nil {
+			return err
+		}
+		name := fmt.Sprintf("fit_file %d (%d/%d number %d)", f.ID, f.DataType, f.SubType, f.FileNumber)
+		return dumpFit(name, f.Data, *only)
+	}
+	if fs.NArg() == 0 {
+		return fmt.Errorf("fitdump: give a file, -id N or -list")
+	}
+	for _, path := range fs.Args() {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if err := dumpFit(path, data, *only); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func listFitFiles(dbPath string) error {
+	db, err := store.Open(dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	devices, err := db.Devices()
+	if err != nil {
+		return err
+	}
+	for _, dev := range devices {
+		files, err := db.FitFiles(dev.ID)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s (%s): %d files\n", dev.Name, dev.Address, len(files))
+		for _, f := range files {
+			fmt.Printf("  id=%-6d type=%d/%-3d number=%-6d index=%-6d %7d bytes\n",
+				f.ID, f.DataType, f.SubType, f.FileNumber, f.FileIndex, len(f.Data))
+		}
+	}
+	return nil
+}
+
+func dumpFit(name string, data []byte, only string) error {
+	f, err := fit.Decode(data)
+	if err != nil && len(f.Records) == 0 {
+		return fmt.Errorf("fitdump: %s: %w", name, err)
+	}
+	if err != nil {
+		fmt.Printf("== %s: partial decode: %v\n", name, err)
+	}
+	fmt.Printf("== %s: %d records\n", name, len(f.Records))
+
+	counts := map[string]int{}
+	for _, r := range f.Records {
+		counts[fmt.Sprintf("%5d %s", r.Num, r.Name)]++
+	}
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Printf("  %-44s %d\n", k, counts[k])
+	}
+	if only == "" {
+		return nil
+	}
+	for i := range f.Records {
+		r := &f.Records[i]
+		if r.Name != only && strconv.Itoa(int(r.Num)) != only {
+			continue
+		}
+		fields, _ := json.Marshal(r.Fields)
+		byNum, _ := json.Marshal(r.ByNum)
+		fmt.Printf("%d %s ts=%d %s bynum=%s\n", r.Num, r.Name, r.Timestamp, fields, byNum)
 	}
 	return nil
 }

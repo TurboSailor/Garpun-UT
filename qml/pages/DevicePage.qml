@@ -9,8 +9,6 @@ import "../js/I18n.js" as I18n
 Item {
     id: page
 
-    signal openNotifications()
-
     readonly property var st: Store.settings
     readonly property var paired: Store.devices || []
     // A device already paired should not be offered again in the scan list.
@@ -35,9 +33,6 @@ Item {
             width: parent.width
             kicker: Store.daemonVersion.length > 0 ? "pulsed " + Store.daemonVersion : "pulsed"
             title: I18n.t("device.title")
-            trailingGlyph: "bell"
-            trailingBadge: Store.notifications ? Store.notifications.length : 0
-            onTrailing: page.openNotifications()
         }
 
         StatusStrip { width: parent.width; showSync: false }

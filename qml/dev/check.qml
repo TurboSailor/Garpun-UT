@@ -55,7 +55,6 @@ Item {
         "../pages/FitnessPage.qml",
         "../pages/HealthPage.qml",
         "../pages/MetricDetailPage.qml",
-        "../pages/NotificationsPage.qml",
         "../pages/SleepPage.qml",
         "../pages/TodayPage.qml",
         "../pages/WorkoutDetailPage.qml",

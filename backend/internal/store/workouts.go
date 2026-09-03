@@ -154,6 +154,7 @@ type FitFile struct {
 	ID           int64
 	DeviceID     int64
 	FileNumber   int
+	FileIndex    int
 	DataType     int
 	SubType      int
 	FileTs       int64
@@ -164,32 +165,35 @@ type FitFile struct {
 	Data         []byte
 }
 
-// PutFitFile stores a downloaded file, replacing an earlier copy with the same
-// file number.
+// PutFitFile stores a downloaded file, replacing an earlier copy of the same
+// file. Identity is type plus number: file numbers repeat across file types.
 func (db *DB) PutFitFile(f *FitFile) error {
 	db.write.Lock()
 	defer db.write.Unlock()
 	_, err := db.sql.Exec(`
-INSERT INTO fit_file (device_id, file_number, data_type, sub_type, file_ts, flags, size, downloaded_ms, imported, data)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(device_id, file_number) DO UPDATE SET
-    data_type = excluded.data_type, sub_type = excluded.sub_type, file_ts = excluded.file_ts,
+INSERT INTO fit_file (device_id, file_number, file_index, data_type, sub_type, file_ts, flags, size, downloaded_ms, imported, data)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(device_id, data_type, sub_type, file_number) DO UPDATE SET
+    file_index = excluded.file_index, file_ts = excluded.file_ts,
     flags = excluded.flags, size = excluded.size, downloaded_ms = excluded.downloaded_ms,
     imported = excluded.imported, data = excluded.data`,
-		f.DeviceID, f.FileNumber, f.DataType, f.SubType, f.FileTs, f.Flags, f.Size,
+		f.DeviceID, f.FileNumber, f.FileIndex, f.DataType, f.SubType, f.FileTs, f.Flags, f.Size,
 		f.DownloadedMs, boolInt(f.Imported), f.Data)
 	if err != nil {
 		return fmt.Errorf("store: put fit file: %w", err)
 	}
-	return db.sql.QueryRow(`SELECT id FROM fit_file WHERE device_id = ? AND file_number = ?`,
-		f.DeviceID, f.FileNumber).Scan(&f.ID)
+	return db.sql.QueryRow(`
+SELECT id FROM fit_file WHERE device_id = ? AND data_type = ? AND sub_type = ? AND file_number = ?`,
+		f.DeviceID, f.DataType, f.SubType, f.FileNumber).Scan(&f.ID)
 }
 
-// HasFitFile reports whether a file number was already downloaded.
-func (db *DB) HasFitFile(deviceID int64, fileNumber int) bool {
+// HasFitFile reports whether this file of this type was already downloaded.
+func (db *DB) HasFitFile(deviceID int64, dataType, subType, fileNumber int) bool {
 	var n int
-	err := db.sql.QueryRow(`SELECT COUNT(1) FROM fit_file WHERE device_id = ? AND file_number = ?`,
-		deviceID, fileNumber).Scan(&n)
+	err := db.sql.QueryRow(`
+SELECT COUNT(1) FROM fit_file
+WHERE device_id = ? AND data_type = ? AND sub_type = ? AND file_number = ?`,
+		deviceID, dataType, subType, fileNumber).Scan(&n)
 	return err == nil && n > 0
 }
 
@@ -197,7 +201,7 @@ func (db *DB) HasFitFile(deviceID int64, fileNumber int) bool {
 // blob attached so the importer can replay them.
 func (db *DB) FitFiles(deviceID int64) ([]FitFile, error) {
 	rows, err := db.sql.Query(`
-SELECT id, device_id, file_number, data_type, sub_type, file_ts, flags, size, downloaded_ms, imported, data
+SELECT id, device_id, file_number, file_index, data_type, sub_type, file_ts, flags, size, downloaded_ms, imported, data
 FROM fit_file WHERE device_id = ? AND data IS NOT NULL ORDER BY file_ts, file_number`, deviceID)
 	if err != nil {
 		return nil, fmt.Errorf("store: fit files: %w", err)
@@ -207,7 +211,7 @@ FROM fit_file WHERE device_id = ? AND data IS NOT NULL ORDER BY file_ts, file_nu
 	for rows.Next() {
 		var f FitFile
 		var imported int
-		if err := rows.Scan(&f.ID, &f.DeviceID, &f.FileNumber, &f.DataType, &f.SubType,
+		if err := rows.Scan(&f.ID, &f.DeviceID, &f.FileNumber, &f.FileIndex, &f.DataType, &f.SubType,
 			&f.FileTs, &f.Flags, &f.Size, &f.DownloadedMs, &imported, &f.Data); err != nil {
 			return nil, err
 		}
@@ -215,6 +219,23 @@ FROM fit_file WHERE device_id = ? AND data IS NOT NULL ORDER BY file_ts, file_nu
 		out = append(out, f)
 	}
 	return out, rows.Err()
+}
+
+// FitFileByID returns one stored file with its blob. Diagnostics read files
+// this way: once the watch has archived a file, the stored blob is the only
+// copy left.
+func (db *DB) FitFileByID(id int64) (*FitFile, error) {
+	var f FitFile
+	var imported int
+	err := db.sql.QueryRow(`
+SELECT id, device_id, file_number, file_index, data_type, sub_type, file_ts, flags, size, downloaded_ms, imported, data
+FROM fit_file WHERE id = ?`, id).Scan(&f.ID, &f.DeviceID, &f.FileNumber, &f.FileIndex,
+		&f.DataType, &f.SubType, &f.FileTs, &f.Flags, &f.Size, &f.DownloadedMs, &imported, &f.Data)
+	if err != nil {
+		return nil, fmt.Errorf("store: fit file %d: %w", id, err)
+	}
+	f.Imported = imported != 0
+	return &f, nil
 }
 
 // ResetDerived drops every table the importer rebuilds from FIT files. The

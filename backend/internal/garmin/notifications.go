@@ -38,14 +38,19 @@ type notificationTransfer struct {
 	crc    uint16
 }
 
-// SendNotification pushes a new notification to the watch. The watch then asks
-// for the attributes it wants via NOTIFICATION_CONTROL.
-func (s *Session) SendNotification(n NotificationContent) {
-	flags := uint8(0x02) // FOREGROUND
-	if len(n.Actions) > 0 {
-		flags |= 0x10 // ACTION_DECLINE
-	}
-	phoneFlags := uint8(0x02) // NEW_ACTIONS
+// SendNotification pushes a notification to the watch. The watch then asks for
+// the attributes it wants via NOTIFICATION_CONTROL.
+//
+// An id the watch already holds is announced as MODIFY, so a card that keeps
+// updating (message counters, download progress) replaces the entry instead of
+// stacking a new one the user has to clear by hand.
+//
+// ACTION_DECLINE is set unconditionally, as upstream getCategoryFlags does:
+// without it the watch offers no dismiss entry, so the card cannot be cleared
+// from the wrist at all.
+func (s *Session) SendNotification(n NotificationContent) error {
+	flags := uint8(0x02 | 0x10) // FOREGROUND | ACTION_DECLINE
+	phoneFlags := uint8(0x02)   // NEW_ACTIONS
 
 	s.notifyMu.Lock()
 	if s.notifCounts == nil {
@@ -56,16 +61,24 @@ func (s *Session) SendNotification(n NotificationContent) {
 		byID = map[int32]bool{}
 		s.notifCounts[n.Category] = byID
 	}
+	update := gfdi.NotifUpdateAdd
+	if byID[n.ID] {
+		update = gfdi.NotifUpdateModify
+	}
 	byID[n.ID] = true
 	count := clampCount(len(byID))
 	s.notifyMu.Unlock()
 
-	s.log.Debug("garmin: notification update out", "id", n.ID, "category", n.Category, "count", count)
-	s.send(gfdi.NotificationUpdate(gfdi.NotifUpdateAdd, flags, n.Category, count, n.ID, phoneFlags))
+	s.log.Debug("garmin: notification update out",
+		"id", n.ID, "category", n.Category, "count", count, "update", update)
+	return s.send(gfdi.NotificationUpdate(update, flags, n.Category, count, n.ID, phoneFlags))
 }
 
-// RemoveNotification tells the watch a notification is gone.
-func (s *Session) RemoveNotification(id int32, category uint8) {
+// RemoveNotification tells the watch a notification is gone. Flags mirror
+// upstream NotificationUpdateMessage: FOREGROUND|ACTION_DECLINE in the
+// category byte, no phone flags, and the count of what is left in the
+// category.
+func (s *Session) RemoveNotification(id int32, category uint8) error {
 	s.notifyMu.Lock()
 	if byID := s.notifCounts[category]; byID != nil {
 		delete(byID, id)
@@ -73,7 +86,24 @@ func (s *Session) RemoveNotification(id int32, category uint8) {
 	count := clampCount(len(s.notifCounts[category]))
 	s.notifyMu.Unlock()
 
-	s.send(gfdi.NotificationUpdate(gfdi.NotifUpdateRemove, 0x02, category, count, id, 0x02))
+	return s.send(gfdi.NotificationUpdate(gfdi.NotifUpdateRemove, 0x02|0x10, category, count, id, 0x00))
+}
+
+// DropNotification removes a notification when only its id is known, which is
+// the case for a dismissal that came from the watch itself. The category is
+// resolved from what the watch is still holding, falling back to OTHER as
+// upstream does for an id it no longer knows.
+func (s *Session) DropNotification(id int32) error {
+	category := gfdi.CategoryOther
+	s.notifyMu.Lock()
+	for cat, byID := range s.notifCounts {
+		if byID[id] {
+			category = cat
+			break
+		}
+	}
+	s.notifyMu.Unlock()
+	return s.RemoveNotification(id, category)
 }
 
 // clampCount keeps the outstanding count inside the single byte the wire

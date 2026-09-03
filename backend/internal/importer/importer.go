@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"sort"
+	"time"
 
 	"pulse/backend/internal/fit"
 	"pulse/backend/internal/store"
@@ -74,6 +75,7 @@ type Result struct {
 	Respiration   int    `json:"respiration"`
 	SleepStages   int    `json:"sleepStages"`
 	SleepSessions int    `json:"sleepSessions"`
+	Naps          int    `json:"naps"`
 	HRV           int    `json:"hrv"`
 	Workouts      int    `json:"workouts"`
 	Metrics       int    `json:"metrics"`
@@ -114,9 +116,9 @@ func (im *Importer) Import(deviceID int64, subType uint8, data []byte) (*Result,
 		im.log.Debug("importer: no specific handler", "type", res.FileType)
 	}
 
-	// Sleep is not confined to the SLEEP file. The Forerunner 255 never offers
-	// that file over the classic transfer and ships the nightly summary inside
-	// METRICS instead, so dispatch on what the file actually contains.
+	// Sleep is not confined to the SLEEP file: the nightly summary rides along
+	// in METRICS (DAILY_SLEEP), so dispatch on what the file actually
+	// contains rather than on its type.
 	if hasSleepRecords(f) {
 		im.importSleep(deviceID, f, res)
 	}
@@ -128,7 +130,7 @@ func (im *Importer) Import(deviceID int64, subType uint8, data []byte) (*Result,
 func hasSleepRecords(f *fit.File) bool {
 	for _, msg := range []uint16{
 		fit.MsgSleepStage, fit.MsgSleepStats, fit.MsgSleepDataRaw,
-		fit.MsgSleepRestless, fit.MsgDailySleep,
+		fit.MsgSleepRestless, fit.MsgDailySleep, fit.MsgSleepSummary, fit.MsgNap,
 	} {
 		if len(f.Of(msg)) > 0 {
 			return true
@@ -170,20 +172,26 @@ func fileTypeName(f *fit.File, subType uint8) string {
 
 // ------------------------------------------------------------- monitoring ---
 
-type monitorBucket struct {
-	tsSec          int64
-	heartRate      int
-	intensity      int
-	activityKind   int
-	stepsPerType   map[int]int
-	distPerType    map[int]int
-	caloriePerType map[int]int
-	moderate       int
-	vigorous       int
+// monitorRecord is one MONITORING message reduced to the fields a sample
+// needs. Records are kept per timestamp instead of being folded straight into
+// a sample, because the cumulative counters have to be replayed in timestamp
+// order and a file does not have to list its records that way.
+type monitorRecord struct {
+	activityType int
+	heartRate    int
+	intensity    int
+	steps        int
+	distance     int
+	calories     int
+	moderate     int
+	vigorous     int
+	hasSteps     bool
+	hasDistance  bool
+	hasCalories  bool
 }
 
 func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
-	buckets := map[int64]*monitorBucket{}
+	buckets := map[int64][]monitorRecord{}
 	var lastMonitoringTs int64
 
 	for _, r := range f.Of(fit.MsgMonitoring) {
@@ -193,50 +201,39 @@ func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
 		}
 		lastMonitoringTs = ts
 
-		b := buckets[ts]
-		if b == nil {
-			b = &monitorBucket{
-				tsSec:          ts,
-				heartRate:      KindNotMeasured,
-				intensity:      KindNotMeasured,
-				activityKind:   KindActivity,
-				stepsPerType:   map[int]int{},
-				distPerType:    map[int]int{},
-				caloriePerType: map[int]int{},
-			}
-			buckets[ts] = b
+		m := monitorRecord{
+			activityType: KindNotMeasured,
+			heartRate:    KindNotMeasured,
+			intensity:    KindNotMeasured,
 		}
-
-		activityType := KindNotMeasured
 		if v, ok := r.Int("activity_type"); ok {
-			activityType = int(v)
+			m.activityType = int(v)
 		}
 		if v, ok := r.Int("current_activity_type_intensity"); ok {
-			if activityType == KindNotMeasured {
-				activityType = int(v) & 0x1F
+			if m.activityType == KindNotMeasured {
+				m.activityType = int(v) & 0x1F
 			}
-			b.intensity = (int(v) >> 5) & 0x07
+			m.intensity = (int(v) >> 5) & 0x07
 		}
 		if v, ok := r.Int("heart_rate"); ok {
-			b.heartRate = int(v)
+			m.heartRate = int(v)
 		}
-		// Garmin reports cumulative counters per activity type; the last value
-		// for a type wins and the sample is their sum.
 		if v, ok := r.Int("cycles"); ok {
-			b.stepsPerType[activityType] = int(v)
+			m.steps, m.hasSteps = int(v), true
 		}
 		if v, ok := r.Int("distance"); ok {
-			b.distPerType[activityType] = int(v)
+			m.distance, m.hasDistance = int(v), true
 		}
 		if v, ok := r.Int("active_calories"); ok {
-			b.caloriePerType[activityType] = int(v)
+			m.calories, m.hasCalories = int(v), true
 		}
 		if v, ok := r.Int("moderate_activity_minutes"); ok {
-			b.moderate += int(v)
+			m.moderate = int(v)
 		}
 		if v, ok := r.Int("vigorous_activity_minutes"); ok {
-			b.vigorous += int(v)
+			m.vigorous = int(v)
 		}
+		buckets[ts] = append(buckets[ts], m)
 	}
 
 	keys := make([]int64, 0, len(buckets))
@@ -245,20 +242,64 @@ func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
 	}
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
+	// Garmin reports each counter cumulatively per activity type, and not in
+	// every record: a minute usually carries only the type that was active.
+	// The last value seen for a type therefore has to survive across
+	// timestamps - these maps live for the whole file, exactly as upstream
+	// FitImporter keeps them - otherwise the summed sample saw-tooths and the
+	// delta pass reads every dip as a midnight reset.
+	stepsPerType := map[int]int{}
+	distPerType := map[int]int{}
+	caloriePerType := map[int]int{}
+
 	var samples []store.ActivitySample
-	var intensity []store.IntensityMinutes
+	var intensityMinutes []store.IntensityMinutes
 	var prevTs int64
 	var prevSteps, prevDist, prevCal int
 	prevKind := KindNotMeasured
 
 	for _, ts := range keys {
-		b := buckets[ts]
+		heartRate, intensity := KindNotMeasured, KindNotMeasured
+		var moderate, vigorous int
+		measured := false
+		for _, m := range buckets[ts] {
+			if m.hasSteps {
+				stepsPerType[m.activityType] = m.steps
+				measured = true
+			}
+			if m.hasDistance {
+				distPerType[m.activityType] = m.distance
+				measured = true
+			}
+			if m.hasCalories {
+				caloriePerType[m.activityType] = m.calories
+				measured = true
+			}
+			if m.heartRate != KindNotMeasured {
+				heartRate = m.heartRate
+				measured = true
+			}
+			if m.intensity != KindNotMeasured {
+				intensity = m.intensity
+				measured = true
+			}
+			if m.moderate != 0 || m.vigorous != 0 {
+				moderate += m.moderate
+				vigorous += m.vigorous
+				measured = true
+			}
+		}
+
 		if prevTs != 0 && ts-prevTs > 60 {
 			kind := prevKind
 			if ts-prevTs > notWornThresholdSec {
 				kind = KindNotWorn
 			}
-			for gap := prevTs + 60; gap < ts; gap += 60 {
+			// The counters restart at local midnight, so a carried value must
+			// never be written past it: the day would then start at
+			// yesterday's total and swallow every real reading below it.
+			dayEnd := nextLocalMidnight(prevTs)
+			for gap := prevTs + 60; gap < ts && gap < dayEnd; gap += 60 {
 				samples = append(samples, store.ActivitySample{
 					TsMs:           gap * 1000,
 					Steps:          prevSteps,
@@ -271,30 +312,35 @@ func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
 			}
 		}
 
-		s := store.ActivitySample{
-			TsMs:         ts * 1000,
-			HeartRate:    b.heartRate,
-			RawIntensity: b.intensity,
-			RawKind:      KindActivity,
-		}
-		for _, v := range b.stepsPerType {
-			s.Steps += v
-		}
-		for _, v := range b.distPerType {
-			s.DistanceCm += v
-		}
-		for _, v := range b.caloriePerType {
-			s.ActiveCalories += v
-		}
-		if s.Steps == 0 && s.DistanceCm == 0 && s.ActiveCalories == 0 &&
-			s.HeartRate <= 0 && s.RawIntensity < 0 {
+		// Nothing was reported for this minute, so there is nothing to store:
+		// the counters are unchanged and a row of "not measured" only adds
+		// noise. The test is what the file carried, not whether the running
+		// totals happen to be zero - once any counter has been seen its sum
+		// stays positive for the rest of the file.
+		if !measured {
 			prevTs, prevKind = ts, KindActivity
 			continue
 		}
+
+		s := store.ActivitySample{
+			TsMs:         ts * 1000,
+			HeartRate:    heartRate,
+			RawIntensity: intensity,
+			RawKind:      KindActivity,
+		}
+		for _, v := range stepsPerType {
+			s.Steps += v
+		}
+		for _, v := range distPerType {
+			s.DistanceCm += v
+		}
+		for _, v := range caloriePerType {
+			s.ActiveCalories += v
+		}
 		samples = append(samples, s)
-		if b.moderate != 0 || b.vigorous != 0 {
-			intensity = append(intensity, store.IntensityMinutes{
-				TsMs: ts * 1000, Moderate: b.moderate, Vigorous: b.vigorous,
+		if moderate != 0 || vigorous != 0 {
+			intensityMinutes = append(intensityMinutes, store.IntensityMinutes{
+				TsMs: ts * 1000, Moderate: moderate, Vigorous: vigorous,
 			})
 		}
 		prevTs, prevKind = ts, KindActivity
@@ -304,7 +350,7 @@ func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
 	if err := im.db.PutActivitySamples(deviceID, samples); err != nil {
 		im.log.Error("importer: activity samples", "err", err)
 	}
-	if err := im.db.PutIntensityMinutes(deviceID, intensity); err != nil {
+	if err := im.db.PutIntensityMinutes(deviceID, intensityMinutes); err != nil {
 		im.log.Error("importer: intensity minutes", "err", err)
 	}
 	res.Activity = len(samples)
@@ -364,6 +410,14 @@ func (im *Importer) importMonitor(deviceID int64, f *fit.File, res *Result) {
 		}
 		return r.Timestamp, float64(v), true
 	})
+}
+
+// nextLocalMidnight is the first second of the local day after tsSec, in Unix
+// seconds. Cumulative counters restart there.
+func nextLocalMidnight(tsSec int64) int64 {
+	t := time.Unix(tsSec, 0).Local()
+	midnight := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location()).AddDate(0, 0, 1)
+	return midnight.Unix()
 }
 
 // monitoringTimestamp resolves the record time, expanding the 16 bit rolling
@@ -446,18 +500,21 @@ func (im *Importer) importSleep(deviceID int64, f *fit.File, res *Result) {
 		})
 	}
 
-	// A file with raw sleep blocks but no scored stages only tells us the
-	// window; synthesise the asleep/awake pair the way upstream does.
+	// Stages that are only "awake" or "unmeasurable" carry no hypnogram, and
+	// upstream keeps none of them. A file with raw sleep blocks instead tells
+	// us the window, so synthesise the asleep/awake pair the way it does.
 	raw := f.Of(fit.MsgSleepDataRaw)
-	if len(raw) > 0 && realStages == 0 {
-		if ids := f.Of(fit.MsgFileID); len(ids) > 0 {
-			if created, ok := ids[0].Int("time_created"); ok && created > 0 {
-				asleep := created * 1000
-				wake := asleep + int64(len(raw))*60000
-				events = append(events,
-					store.SleepEvent{TsMs: asleep, Event: 74, EventType: 0, Data: -1},
-					store.SleepEvent{TsMs: wake, Event: 74, EventType: 1, Data: -1})
-				stages = nil
+	if realStages == 0 {
+		stages = nil
+		if len(raw) > 0 {
+			if ids := f.Of(fit.MsgFileID); len(ids) > 0 {
+				if created, ok := ids[0].Int("time_created"); ok && created > 0 {
+					asleep := created * 1000
+					wake := asleep + int64(len(raw))*60000
+					events = append(events,
+						store.SleepEvent{TsMs: asleep, Event: 74, EventType: 0, Data: -1},
+						store.SleepEvent{TsMs: wake, Event: 74, EventType: 1, Data: -1})
+				}
 			}
 		}
 	}
@@ -515,6 +572,58 @@ func (im *Importer) importSleep(deviceID int64, f *fit.File, res *Result) {
 		}
 		sessions = append(sessions, s)
 	}
+
+	// SLEEP_SUMMARY is the record that breaks the night into stage minutes.
+	// Upstream ignores it; on a watch that never hands over the per-stage
+	// SLEEP file it is the only breakdown there is. Every duration here is in
+	// minutes, unlike DAILY_SLEEP above.
+	for _, r := range f.Of(fit.MsgSleepSummary) {
+		start, ok1 := r.Int("sleep_start_timestamp_utc")
+		end, ok2 := r.Int("sleep_end_timestamp_utc")
+		if !ok1 || !ok2 || end <= start {
+			continue
+		}
+		s := store.SleepSession{StartMs: start * 1000, EndMs: end * 1000}
+		if v, ok := r.Int("deep_duration"); ok && v > 0 {
+			s.DeepMs = v * 60000
+		}
+		if v, ok := r.Int("light_duration"); ok && v > 0 {
+			s.LightMs = v * 60000
+		}
+		if v, ok := r.Int("rem_duration"); ok && v > 0 {
+			s.RemMs = v * 60000
+		}
+		if v, ok := r.Int("awake_duration"); ok && v > 0 {
+			s.AwakeMs = v * 60000
+		}
+		if v, ok := r.Int("unmeasurable_duration"); ok && v > 0 {
+			s.UnmeasurableMs = v * 60000
+		}
+		if v, ok := r.Int("sleep_score"); ok && v > 0 {
+			s.Score = int(v)
+			scores = append(scores, store.Point{TsMs: end * 1000, Value: float64(v)})
+		}
+		sessions = append(sessions, s)
+	}
+
+	// Naps are separate sessions the watch can also retract, hence deleted.
+	var naps []store.Nap
+	for _, r := range f.Of(fit.MsgNap) {
+		if v, ok := r.Int("deleted"); ok && v != 0 {
+			continue
+		}
+		start, ok1 := r.Int("start_timestamp")
+		end, ok2 := r.Int("end_timestamp")
+		if !ok1 || !ok2 || end <= start {
+			continue
+		}
+		naps = append(naps, store.Nap{StartMs: start * 1000, EndMs: end * 1000})
+	}
+	if err := im.db.PutNaps(deviceID, naps); err != nil {
+		im.log.Error("importer: naps", "err", err)
+	}
+	res.Naps = len(naps)
+
 	if err := im.db.PutSleepSessions(deviceID, sessions); err != nil {
 		im.log.Error("importer: sleep sessions", "err", err)
 	}

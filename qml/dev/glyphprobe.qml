@@ -10,7 +10,7 @@ import Ubuntu.Components 1.3
 //   3 Image + SVG  the existing path strings, rendered by the svg plugin
 MainView {
     id: app
-    applicationName: "cc.zachy.pulse"
+    applicationName: "pulse.turbosailor"
     width: units.gu(45)
     height: units.gu(80)
 

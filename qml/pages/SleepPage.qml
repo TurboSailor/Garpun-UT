@@ -17,6 +17,9 @@ Item {
     // summary when it does not.
     readonly property real asleep: s ? (s.asleepMinutes || 0) : 0
     readonly property bool hasStages: !!(s && s.hasStages)
+    // Per-stage minutes can exist without a hypnogram: a watch that only
+    // reports the nightly summary gives the breakdown but no stage samples.
+    readonly property bool hasBreakdown: !!(s && s.hasBreakdown)
     readonly property real inBed: asleep + (totals ? (totals.awake || 0) : 0)
     readonly property int score: s && s.score > 0 ? s.score : 0
     readonly property bool hasNight: asleep > 0 || score > 0
@@ -210,7 +213,7 @@ Item {
         // ---- stages ---------------------------------------------------------
         Card {
             width: parent.width
-            visible: !page.waiting && page.hasNight && page.hasStages
+            visible: !page.waiting && page.hasNight && page.hasBreakdown
 
             StageBar {
                 width: parent.width
@@ -286,7 +289,7 @@ Item {
                     font.pixelSize: Pulse.micro
                 }
                 Label {
-                    visible: !page.hasStages
+                    visible: !page.hasStages && !page.hasBreakdown
                     anchors.centerIn: parent
                     text: I18n.t("sleep.no_stages")
                     color: Pulse.textDim

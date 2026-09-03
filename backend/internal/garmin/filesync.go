@@ -62,6 +62,9 @@ type uploadState struct {
 
 // StartSync asks the watch for its file directory. The watch answers the
 // FILTER acknowledgement, which is what actually kicks off the listing.
+//
+// The syncing flag is only raised once the request is on the wire: a failed
+// write used to latch it forever, which silently disabled every later sync.
 func (s *Session) StartSync() {
 	s.mu.Lock()
 	if s.syncing {
@@ -71,7 +74,12 @@ func (s *Session) StartSync() {
 	s.syncing = true
 	s.mu.Unlock()
 	s.emit(EventSyncStarted, nil)
-	s.send(gfdi.Filter())
+	if err := s.send(gfdi.Filter()); err != nil {
+		s.mu.Lock()
+		s.syncing = false
+		s.mu.Unlock()
+		s.emit(EventSyncFinished, nil)
+	}
 }
 
 func (s *Session) initiateDirectoryDownload() {
@@ -237,19 +245,25 @@ func (s *Session) onDirectory(data []byte) {
 		if e.FileIndex == 0 && e.FileDataType == 0 && e.FileSubType == 0 && e.FileSize == 0 {
 			continue // all-zero padding record
 		}
-		s.log.Debug("garmin: directory entry", "index", e.FileIndex,
+		// The listing is the only place the watch says which files it is
+		// willing to hand over, so it is logged at info level: a missing file
+		// type (sleep stages, for one) cannot be diagnosed from a debug log
+		// nobody is running.
+		s.log.Info("garmin: directory entry", "index", e.FileIndex,
 			"type", e.FileDataType, "subtype", e.FileSubType,
 			"name", FileTypeName(e.FileDataType, e.FileSubType),
 			"size", e.FileSize, "flags", e.FileFlags, "specific", e.SpecificFlags,
 			"ts", e.Timestamp)
 		ft, known := LookupFileType(e.FileDataType, e.FileSubType)
 		if !known {
-			s.log.Debug("garmin: unknown file type in directory",
+			s.log.Info("garmin: skipping unknown file type",
 				"type", e.FileDataType, "subtype", e.FileSubType, "index", e.FileIndex)
 			if !s.opts.FetchUnknownFiles {
 				continue
 			}
 		} else if !ft.Pull && !s.opts.FetchUnknownFiles {
+			s.log.Info("garmin: skipping file type we do not pull",
+				"name", ft.Name, "index", e.FileIndex)
 			continue
 		}
 		queue = append(queue, e)

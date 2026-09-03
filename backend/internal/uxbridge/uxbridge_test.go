@@ -14,13 +14,16 @@ import (
 func newTestBridge() *Bridge {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Bridge{
-		log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		out:     make(chan Notification, 64),
-		ids:     map[string]int32{},
-		nextID:  1,
-		appName: map[string]string{},
-		ctx:     ctx,
-		cancel:  cancel,
+		log:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		out:       make(chan Notification, 64),
+		ids:       map[string]int32{},
+		nextID:    1,
+		appName:   map[string]string{},
+		fdPending: map[fdCallKey]int32{},
+		fdIDs:     map[uint32]int32{},
+		fdServer:  map[int32]uint32{},
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 }
 

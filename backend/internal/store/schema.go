@@ -73,13 +73,15 @@ CREATE TABLE IF NOT EXISTS nap_sample (
     PRIMARY KEY (device_id, ts_ms)
 ) WITHOUT ROWID;
 
--- The nightly summary the watch computes itself (FIT DAILY_SLEEP). Some
--- devices, Forerunner 255 among them, never hand over the per-stage SLEEP file
--- over the classic transfer, so this row is the only record of the night.
+-- The nightly summary the watch computes itself (FIT DAILY_SLEEP). It is what
+-- a night looks like before the per-stage SLEEP file arrives, and the only
+-- record of nights the watch has already archived.
 CREATE TABLE IF NOT EXISTS sleep_session (
     device_id INTEGER NOT NULL, start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL,
     awake_ms INTEGER NOT NULL DEFAULT 0, score INTEGER NOT NULL DEFAULT 0,
     start_body_battery INTEGER NOT NULL DEFAULT 0, end_body_battery INTEGER NOT NULL DEFAULT 0,
+    deep_ms INTEGER NOT NULL DEFAULT 0, light_ms INTEGER NOT NULL DEFAULT 0,
+    rem_ms INTEGER NOT NULL DEFAULT 0, unmeasurable_ms INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (device_id, start_ms)
 ) WITHOUT ROWID;
 
@@ -162,12 +164,28 @@ CREATE TABLE IF NOT EXISTS workout_track (
     PRIMARY KEY (workout_id, ts_ms)
 ) WITHOUT ROWID;
 
--- Raw FIT files pulled from the watch. data is kept so a future importer
--- revision can re-derive samples without another sync.
-CREATE TABLE IF NOT EXISTS fit_file (
+CREATE TABLE IF NOT EXISTS setting (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+`
+
+// fitFileDDL builds the fit_file table statement. It is kept apart from the
+// schema above because the migration rebuilds the table under a temporary
+// name to widen its uniqueness constraint.
+//
+// Raw FIT files pulled from the watch; data is kept so a future importer
+// revision can re-derive samples without another sync. A file is identified
+// by its type and number together: file numbers repeat across types, and
+// keying on the number alone made a sleep file look like an already
+// downloaded monitor file and got it archived unread.
+func fitFileDDL(table string) string {
+	return `
+CREATE TABLE IF NOT EXISTS ` + table + ` (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id      INTEGER NOT NULL,
     file_number    INTEGER NOT NULL,
+    file_index     INTEGER NOT NULL DEFAULT 0,
     data_type      INTEGER NOT NULL,
     sub_type       INTEGER NOT NULL,
     file_ts        INTEGER NOT NULL,
@@ -176,11 +194,6 @@ CREATE TABLE IF NOT EXISTS fit_file (
     downloaded_ms  INTEGER NOT NULL,
     imported       INTEGER NOT NULL DEFAULT 0,
     data           BLOB,
-    UNIQUE (device_id, file_number)
-);
-
-CREATE TABLE IF NOT EXISTS setting (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-`
+    UNIQUE (device_id, data_type, sub_type, file_number)
+);`
+}

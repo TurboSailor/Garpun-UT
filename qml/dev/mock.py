@@ -305,26 +305,6 @@ def workout(wid):
     return None
 
 
-def notifications():
-    if EMPTY:
-        return []
-    now = int(time.time() * 1000)
-    return [
-        {"id": 41, "source": "waydroid", "appId": "org.telegram.messenger",
-         "appName": "Telegram", "title": "Anna", "body": "See you at 19:00 by the river",
-         "category": 1, "tsMs": now - 4 * 60000, "removed": False},
-        {"id": 40, "source": "call", "appId": "dialer", "appName": "Phone",
-         "title": "Missed call", "body": "+7 916 000 11 22", "category": 3,
-         "tsMs": now - 26 * 60000, "removed": True},
-        {"id": 39, "source": "freedesktop", "appId": "morph-browser",
-         "appName": "Morph", "title": "Download finished", "body": "garmin-fw.zip",
-         "category": 0, "tsMs": now - 92 * 60000, "removed": False},
-        {"id": 38, "source": "waydroid", "appId": "com.google.android.gm",
-         "appName": "Gmail", "title": "Invoice #2291", "body": "Payment received, thanks!",
-         "category": 1, "tsMs": now - 4 * 3600000, "removed": False},
-    ]
-
-
 # --------------------------------------------------------------------------
 # background jobs
 # --------------------------------------------------------------------------
@@ -434,8 +414,6 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(w) if w else self._json({"error": "not found"}, 404)
         if path == "/api/settings":
             return self._json(SETTINGS)
-        if path == "/api/notifications":
-            return self._json(notifications()[: int(q.get("limit", ["50"])[0])])
         if path == "/api/events":
             return self._events()
         self._json({"error": "no route"}, 404)

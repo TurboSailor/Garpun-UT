@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"pulse/backend/internal/analytics"
+	"pulse/backend/internal/fit"
 	"pulse/backend/internal/store"
 )
 
@@ -229,6 +230,232 @@ func TestZeroDipDoesNotRecreditCounter(t *testing.T) {
 	}
 }
 
+// TestSawToothCounterCreditsOnlyGrowth covers the shape that inflated active
+// calories several times over: a cumulative row that dips because the watch
+// left an activity type out of one minute. Only the growth above the
+// high-water mark may be credited, so 200 -> 121 -> 201 is worth one calorie,
+// not another 121.
+func TestSawToothCounterCreditsOnlyGrowth(t *testing.T) {
+	db, deviceID := testDB(t)
+
+	day := time.Date(2026, 3, 1, 0, 0, 0, 0, time.Local)
+	base := day.Add(14 * time.Hour)
+	samples := []store.ActivitySample{
+		{TsMs: base.UnixMilli(), ActiveCalories: 200, HeartRate: 70, RawKind: KindActivity},
+		{TsMs: base.Add(1 * time.Minute).UnixMilli(), ActiveCalories: 121, HeartRate: 71, RawKind: KindActivity},
+		{TsMs: base.Add(2 * time.Minute).UnixMilli(), ActiveCalories: 201, HeartRate: 72, RawKind: KindActivity},
+	}
+	if err := db.PutActivitySamples(deviceID, samples); err != nil {
+		t.Fatalf("put samples: %v", err)
+	}
+
+	e := analytics.New(db, deviceID, analytics.DefaultSettings(), time.Local)
+	if got, want := e.DayTotals(day).ActiveCalories, 201; got != want {
+		t.Errorf("active calories = %d, want %d (the dip must credit 0 and the recovery +1)", got, want)
+	}
+}
+
+// TestPartialActivityTypeReportKeepsSum is the import side of the same bug.
+// Garmin reports each counter per activity type and not in every record, so
+// the last value of every type has to survive across timestamps: a minute
+// that mentions one type only must not drop the stored total to that type's
+// share.
+func TestPartialActivityTypeReportKeepsSum(t *testing.T) {
+	db, deviceID := testDB(t)
+	base := time.Date(2026, 3, 1, 8, 0, 0, 0, time.Local).Unix()
+
+	b := fit.NewBuilder()
+	add := func(fields map[string]any) {
+		if err := b.Add("MONITORING", fields); err != nil {
+			t.Fatalf("build monitoring: %v", err)
+		}
+	}
+	if err := b.Add("FILE_ID", map[string]any{"type": 32, "time_created": base}); err != nil {
+		t.Fatalf("build file id: %v", err)
+	}
+	// Minute one: generic and walking both report. Minute two: generic only,
+	// the shape that used to halve the sample. Minute three: both again.
+	add(map[string]any{"timestamp": base, "activity_type": 0, "cycles": 100, "active_calories": 120, "heart_rate": 70})
+	add(map[string]any{"timestamp": base, "activity_type": 6, "cycles": 50, "active_calories": 80})
+	add(map[string]any{"timestamp": base + 60, "activity_type": 0, "cycles": 110, "active_calories": 121, "heart_rate": 72})
+	add(map[string]any{"timestamp": base + 120, "activity_type": 0, "cycles": 120, "active_calories": 122, "heart_rate": 71})
+	add(map[string]any{"timestamp": base + 120, "activity_type": 6, "cycles": 50, "active_calories": 80})
+
+	im := New(db, quietLogger())
+	if _, err := im.Import(deviceID, 32, b.File()); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	samples, err := db.ActivitySamples(deviceID, 0, 1<<62)
+	if err != nil {
+		t.Fatalf("read samples: %v", err)
+	}
+	if len(samples) != 3 {
+		t.Fatalf("stored %d samples, want 3", len(samples))
+	}
+	wantCal := []int{200, 201, 202}
+	wantSteps := []int{150, 160, 170}
+	for i, s := range samples {
+		if s.ActiveCalories != wantCal[i] || s.Steps != wantSteps[i] {
+			t.Errorf("sample %d = %d kcal / %d steps, want %d / %d",
+				i, s.ActiveCalories, s.Steps, wantCal[i], wantSteps[i])
+		}
+	}
+
+	e := analytics.New(db, deviceID, analytics.DefaultSettings(), time.Local)
+	totals := e.DayTotals(time.Unix(base, 0).Local())
+	if totals.ActiveCalories != 202 {
+		t.Errorf("day active calories = %d, want 202 (the counter's day total)", totals.ActiveCalories)
+	}
+	if totals.Steps != 170 {
+		t.Errorf("day steps = %d, want 170", totals.Steps)
+	}
+}
+
+// TestImportSleepSummaryBreakdown covers the night on a watch that hands over
+// a SLEEP file with summary and nap records but no scored stages: the minutes
+// per stage must reach the report even though no hypnogram can be drawn, and
+// the awake/unmeasurable-only stage records must not be stored at all.
+func TestImportSleepSummaryBreakdown(t *testing.T) {
+	db, deviceID := testDB(t)
+
+	start := time.Date(2026, 3, 1, 23, 0, 0, 0, time.Local).Unix()
+	end := time.Date(2026, 3, 2, 7, 0, 0, 0, time.Local).Unix()
+	napStart := time.Date(2026, 3, 2, 10, 0, 0, 0, time.Local).Unix()
+
+	b := fit.NewBuilder()
+	if err := b.Add("FILE_ID", map[string]any{"type": 49, "time_created": start}); err != nil {
+		t.Fatalf("build file id: %v", err)
+	}
+	if err := b.Add("SLEEP_SUMMARY", map[string]any{
+		"timestamp": end, "sleep_start_timestamp_utc": start, "sleep_end_timestamp_utc": end,
+		"sleep_score": 81, "deep_duration": 90, "light_duration": 250, "rem_duration": 80,
+		"awake_duration": 60, "unmeasurable_duration": 0,
+	}); err != nil {
+		t.Fatalf("build sleep summary: %v", err)
+	}
+	if err := b.Add("NAP", map[string]any{
+		"timestamp": napStart, "start_timestamp": napStart, "end_timestamp": napStart + 40*60,
+	}); err != nil {
+		t.Fatalf("build nap: %v", err)
+	}
+	// A retracted nap must be ignored.
+	if err := b.Add("NAP", map[string]any{
+		"timestamp": napStart, "start_timestamp": napStart + 3600,
+		"end_timestamp": napStart + 5400, "deleted": 1,
+	}); err != nil {
+		t.Fatalf("build deleted nap: %v", err)
+	}
+	for i, stage := range []int{SleepAwake, SleepUnmeasurable, SleepAwake} {
+		if err := b.Add("SLEEP_STAGE", map[string]any{
+			"timestamp": start + int64(i+1)*600, "sleep_stage": stage,
+		}); err != nil {
+			t.Fatalf("build sleep stage: %v", err)
+		}
+	}
+
+	im := New(db, quietLogger())
+	res, err := im.Import(deviceID, 49, b.File())
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if res.FileType != "SLEEP" {
+		t.Errorf("file type = %q, want SLEEP", res.FileType)
+	}
+	if res.SleepStages != 0 {
+		t.Errorf("stored %d stages, want 0: awake and unmeasurable alone are no hypnogram", res.SleepStages)
+	}
+	if res.SleepSessions != 1 {
+		t.Fatalf("sleep sessions = %d, want 1", res.SleepSessions)
+	}
+	if res.Naps != 1 {
+		t.Errorf("naps = %d, want 1 (the deleted one must be skipped)", res.Naps)
+	}
+
+	sessions, err := db.SleepSessions(deviceID, 0, 1<<62)
+	if err != nil {
+		t.Fatalf("read sessions: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("stored sessions = %d, want 1", len(sessions))
+	}
+	s := sessions[0]
+	if s.DeepMs != 90*60000 || s.LightMs != 250*60000 || s.RemMs != 80*60000 || s.AwakeMs != 60*60000 {
+		t.Errorf("stage durations = %d/%d/%d/%d ms, want 90/250/80/60 minutes",
+			s.DeepMs, s.LightMs, s.RemMs, s.AwakeMs)
+	}
+
+	e := analytics.New(db, deviceID, analytics.DefaultSettings(), time.Local)
+	rep := e.Sleep(time.Unix(end, 0).Local())
+	if rep.HasStages {
+		t.Error("hasStages must stay false without stage samples")
+	}
+	if !rep.HasBreakdown {
+		t.Error("hasBreakdown must be true: the summary carries per-stage minutes")
+	}
+	if rep.Totals.Deep != 90 || rep.Totals.Light != 250 || rep.Totals.REM != 80 || rep.Totals.Awake != 60 {
+		t.Errorf("report totals = %+v, want 90/250/80/60", rep.Totals)
+	}
+	if rep.AsleepMinutes != 420 {
+		t.Errorf("asleep = %d min, want 420 (deep+light+rem)", rep.AsleepMinutes)
+	}
+	if rep.Score != 81 {
+		t.Errorf("score = %d, want 81", rep.Score)
+	}
+	if len(rep.Naps) != 1 || rep.Naps[0].Minutes != 40 {
+		t.Errorf("naps = %+v, want one 40 minute nap", rep.Naps)
+	}
+}
+
+// TestImportSleepStagesBuildHypnogram checks the other half: real stages are
+// stored, and they imply both a hypnogram and a breakdown.
+func TestImportSleepStagesBuildHypnogram(t *testing.T) {
+	db, deviceID := testDB(t)
+
+	start := time.Date(2026, 3, 1, 23, 0, 0, 0, time.Local).Unix()
+	b := fit.NewBuilder()
+	if err := b.Add("FILE_ID", map[string]any{"type": 49, "time_created": start}); err != nil {
+		t.Fatalf("build file id: %v", err)
+	}
+	// Stage timestamps are upper bounds, so the first record only opens the
+	// window: 30 minutes light, 60 deep, 30 rem.
+	stages := []struct {
+		afterMin int64
+		stage    int
+	}{{0, SleepAwake}, {30, SleepLight}, {90, SleepDeep}, {120, SleepREM}}
+	for _, s := range stages {
+		if err := b.Add("SLEEP_STAGE", map[string]any{
+			"timestamp": start + s.afterMin*60, "sleep_stage": s.stage,
+		}); err != nil {
+			t.Fatalf("build sleep stage: %v", err)
+		}
+	}
+
+	im := New(db, quietLogger())
+	res, err := im.Import(deviceID, 49, b.File())
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if res.SleepStages != 4 {
+		t.Fatalf("stored %d stages, want 4", res.SleepStages)
+	}
+
+	e := analytics.New(db, deviceID, analytics.DefaultSettings(), time.Local)
+	rep := e.Sleep(time.Date(2026, 3, 2, 9, 0, 0, 0, time.Local))
+	if !rep.HasStages || !rep.HasBreakdown {
+		t.Fatalf("hasStages = %v, hasBreakdown = %v, want both true", rep.HasStages, rep.HasBreakdown)
+	}
+	if rep.Totals.Light != 30 || rep.Totals.Deep != 60 || rep.Totals.REM != 30 {
+		t.Errorf("totals = %+v, want light 30, deep 60, rem 30", rep.Totals)
+	}
+	if rep.AsleepMinutes != 120 {
+		t.Errorf("asleep = %d min, want 120", rep.AsleepMinutes)
+	}
+	if len(rep.Stages) != 3 {
+		t.Errorf("hypnogram spans = %d, want 3", len(rep.Stages))
+	}
+}
+
 // TestImportSleepFromMetricsFile pins the Forerunner 255 behaviour: the watch
 // never offers the per-stage SLEEP file over the classic transfer, and ships
 // the night as a DAILY_SLEEP record inside METRICS. Reading it with the wrong
@@ -278,8 +505,8 @@ func TestImportSleepFromMetricsFile(t *testing.T) {
 	e := analytics.New(db, deviceID, analytics.DefaultSettings(), time.Local)
 	day := time.UnixMilli(s.EndMs).Local()
 	rep := e.Sleep(day)
-	if rep.HasStages {
-		t.Error("hasStages must stay false: the file carries no stage data")
+	if rep.HasStages || rep.HasBreakdown {
+		t.Error("hasStages/hasBreakdown must stay false: the file carries no stage data")
 	}
 	if rep.Score != 74 {
 		t.Errorf("report score = %d, want 74", rep.Score)

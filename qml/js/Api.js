@@ -85,7 +85,6 @@ function settingsGet(ok, fail)       { return get("/api/settings", ok, fail); }
 function settingsPut(body, ok, fail) { return put("/api/settings", body, ok, fail); }
 function findWatch(sec, ok, fail)    { return post("/api/findwatch", { seconds: sec }, ok, fail); }
 function findWatchCancel(ok, fail)   { return post("/api/findwatch/cancel", {}, ok, fail); }
-function notifications(limit, ok, fail) { return get("/api/notifications" + q({ limit: limit }), ok, fail); }
 
 // ---- SSE ----------------------------------------------------------------
 

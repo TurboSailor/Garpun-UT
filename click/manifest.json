@@ -1,19 +1,15 @@
 {
-    "name": "cc.zachy.pulse",
+    "name": "pulse.turbosailor",
     "version": "0.1.0",
     "architecture": "arm64",
     "framework": "ubuntu-sdk-20.04",
-    "maintainer": "Pulse <pulse@localhost>",
+    "maintainer": "TurboSailor <turbosailor@localhost>",
     "title": "Pulse",
     "description": "Garmin watch companion: sync, health metrics, sleep and workouts",
     "hooks": {
         "pulse": {
             "apparmor": "pulse.apparmor",
             "desktop": "pulse.desktop"
-        },
-        "push": {
-            "apparmor": "push-apparmor.json",
-            "push-helper": "push.json"
         }
     }
 }

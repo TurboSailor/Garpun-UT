@@ -30,31 +30,32 @@ echo ">> click install"
 out="$(sudo_sh "click install --force --allow-unauthenticated --user=phablet $REMOTE_DIR/$base")"
 echo "$out"
 
-pkg="$("${ADB[@]}" shell "click list 2>/dev/null" | tr -d '\r' | sed -n 's/^cc\.zachy\.pulse\t.*/&/p')"
+pkg="$("${ADB[@]}" shell "click list 2>/dev/null" | tr -d '\r' | sed -n 's/^pulse\.turbosailor\t.*/&/p')"
 if [ -z "$pkg" ]; then
-    echo "!! cc.zachy.pulse is not in click list; leftovers:"
-    sudo_sh "ls -d /opt/click.ubuntu.com/cc.zachy.pulse 2>/dev/null"
-    die "install failed (clean up with: sudo rm -rf /opt/click.ubuntu.com/cc.zachy.pulse)"
+    echo "!! pulse.turbosailor is not in click list; leftovers:"
+    sudo_sh "ls -d /opt/click.ubuntu.com/pulse.turbosailor 2>/dev/null"
+    die "install failed (clean up with: sudo rm -rf /opt/click.ubuntu.com/pulse.turbosailor)"
 fi
 echo ">> click list: $pkg"
 
-prof="$(sudo_sh "aa-status" | sed -n '/cc\.zachy\.pulse/p' | head -n3)"
+prof="$(sudo_sh "aa-status" | sed -n '/pulse\.turbosailor/p' | head -n3)"
 if [ -z "$prof" ]; then
     echo ">> apparmor profile missing, regenerating hooks"
     sudo_sh "aa-clickhook -f"
-    prof="$(sudo_sh "aa-status" | sed -n '/cc\.zachy\.pulse/p' | head -n3)"
+    prof="$(sudo_sh "aa-status" | sed -n '/pulse\.turbosailor/p' | head -n3)"
 fi
-[ -n "$prof" ] || die "apparmor profile for cc.zachy.pulse was not generated"
+[ -n "$prof" ] || die "apparmor profile for pulse.turbosailor was not generated"
 echo ">> aa-status:"
 echo "$prof"
 
-# The push service resolves an app's push-helper once and caches it. After a
-# re-install that cache points at the previous unpack directory, Postal
-# silently stops persisting anything, so bounce it here.
-echo ">> restarting lomiri-push-service (drops the stale push-helper cache)"
+# The daemon keeps running out of the previous unpack directory: `current`
+# already points at the new one, but the live process holds the old binary.
+# Restart its unit so a redeploy actually takes effect. The unit exists only
+# after the app has been opened once - run.sh is what creates it.
+echo ">> restarting pulse-pulsed.service"
 "${ADB[@]}" shell "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/32011/bus \
-    systemctl --user restart lomiri-push-service" >/dev/null 2>&1 \
-    || echo "!! could not restart lomiri-push-service; notifications may not persist"
+    systemctl --user try-restart pulse-pulsed.service" >/dev/null 2>&1 \
+    || echo "!! could not restart pulse-pulsed; open the app to start it"
 
 ver="$(printf '%s' "$pkg" | awk '{print $2}')"
-echo ">> app id: cc.zachy.pulse_pulse_$ver  (tap the icon; adb launches lack a trust session)"
+echo ">> app id: pulse.turbosailor_pulse_$ver  (tap the icon; adb launches lack a trust session)"

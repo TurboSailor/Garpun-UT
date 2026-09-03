@@ -40,6 +40,14 @@ func Open(path string) (*DB, error) {
 		h.Close()
 		return nil, fmt.Errorf("store: migrate: %w", err)
 	}
+	if _, err := h.Exec(fitFileDDL("fit_file")); err != nil {
+		h.Close()
+		return nil, fmt.Errorf("store: migrate fit_file: %w", err)
+	}
+	if err := migrate(h); err != nil {
+		h.Close()
+		return nil, err
+	}
 	return &DB{sql: h, path: path}, nil
 }
 

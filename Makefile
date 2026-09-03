@@ -3,7 +3,7 @@
 # The click tree is assembled in build/pkg, then packed *on the phone* (macOS has
 # no `click` tool) and installed from there. See scripts/build.sh, scripts/deploy.sh.
 
-APP     := cc.zachy.pulse
+APP     := pulse.turbosailor
 ARCH    := arm64
 VERSION := $(shell sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' click/manifest.json)
 
@@ -16,18 +16,16 @@ QML_DIR     ?= qml
 
 GO         := go
 GO_BUILD   := CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) $(GO) build -trimpath -ldflags "-s -w"
-CLICK_META := click/manifest.json click/pulse.apparmor click/pulse.desktop click/pulse.png \
-              click/push-apparmor.json click/push.json
+CLICK_META := click/manifest.json click/pulse.apparmor click/pulse.desktop click/pulse.png
 
 .PHONY: all backend qml meta pkg click deploy logs clean
 
 all: click
 
-# Cross-compiled daemon, Waydroid notification relay and diagnostic CLI.
+# Cross-compiled daemon and diagnostic CLI.
 backend:
 	mkdir -p $(PKG)/bin
 	cd $(BACKEND_DIR) && $(GO_BUILD) -o $(CURDIR)/$(PKG)/bin/pulsed ./cmd/pulsed
-	cd $(BACKEND_DIR) && $(GO_BUILD) -o $(CURDIR)/$(PKG)/bin/pulse-wdnotify ./cmd/pulse-wdnotify
 	cd $(BACKEND_DIR) && $(GO_BUILD) -o $(CURDIR)/$(PKG)/bin/pulsectl ./cmd/pulsectl
 
 qml:
@@ -39,8 +37,7 @@ meta:
 	mkdir -p $(PKG)
 	cp $(CLICK_META) $(PKG)/
 	cp click/run.sh $(PKG)/run.sh
-	cp click/pushexec $(PKG)/pushexec
-	chmod +x $(PKG)/run.sh $(PKG)/pushexec
+	chmod +x $(PKG)/run.sh
 
 pkg: backend qml meta
 

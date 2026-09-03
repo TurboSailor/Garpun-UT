@@ -278,7 +278,9 @@ SELECT ts_ms, end_ts_ms FROM nap_sample WHERE device_id = ? AND ts_ms >= ? AND t
 	return out, rows.Err()
 }
 
-// SleepSession is the watch's own summary of one night.
+// SleepSession is the watch's own summary of one night. The stage durations
+// are only filled in when the watch ships a SLEEP_SUMMARY record; a
+// DAILY_SLEEP-only night leaves them at zero.
 type SleepSession struct {
 	StartMs          int64 `json:"startMs"`
 	EndMs            int64 `json:"endMs"`
@@ -286,26 +288,42 @@ type SleepSession struct {
 	Score            int   `json:"score"`
 	StartBodyBattery int   `json:"startBodyBattery"`
 	EndBodyBattery   int   `json:"endBodyBattery"`
+	DeepMs           int64 `json:"deepMs"`
+	LightMs          int64 `json:"lightMs"`
+	RemMs            int64 `json:"remMs"`
+	UnmeasurableMs   int64 `json:"unmeasurableMs"`
 }
 
+// PutSleepSessions merges the night summaries. Two messages describe the same
+// night - DAILY_SLEEP carries score and body battery, SLEEP_SUMMARY the stage
+// minutes - so a zero from one source never overwrites a value from the other.
 func (db *DB) PutSleepSessions(deviceID int64, sessions []SleepSession) error {
 	if len(sessions) == 0 {
 		return nil
 	}
 	return db.tx(func(tx *sql.Tx) error {
 		st, err := tx.Prepare(`
-INSERT INTO sleep_session (device_id, start_ms, end_ms, awake_ms, score, start_body_battery, end_body_battery)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO sleep_session (device_id, start_ms, end_ms, awake_ms, score,
+    start_body_battery, end_body_battery, deep_ms, light_ms, rem_ms, unmeasurable_ms)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(device_id, start_ms) DO UPDATE SET
-    end_ms = excluded.end_ms, awake_ms = excluded.awake_ms, score = excluded.score,
-    start_body_battery = excluded.start_body_battery, end_body_battery = excluded.end_body_battery`)
+    end_ms = excluded.end_ms,
+    awake_ms = MAX(sleep_session.awake_ms, excluded.awake_ms),
+    score = MAX(sleep_session.score, excluded.score),
+    start_body_battery = MAX(sleep_session.start_body_battery, excluded.start_body_battery),
+    end_body_battery = MAX(sleep_session.end_body_battery, excluded.end_body_battery),
+    deep_ms = MAX(sleep_session.deep_ms, excluded.deep_ms),
+    light_ms = MAX(sleep_session.light_ms, excluded.light_ms),
+    rem_ms = MAX(sleep_session.rem_ms, excluded.rem_ms),
+    unmeasurable_ms = MAX(sleep_session.unmeasurable_ms, excluded.unmeasurable_ms)`)
 		if err != nil {
 			return err
 		}
 		defer st.Close()
 		for _, s := range sessions {
 			if _, err := st.Exec(deviceID, s.StartMs, s.EndMs, s.AwakeMs, s.Score,
-				s.StartBodyBattery, s.EndBodyBattery); err != nil {
+				s.StartBodyBattery, s.EndBodyBattery,
+				s.DeepMs, s.LightMs, s.RemMs, s.UnmeasurableMs); err != nil {
 				return err
 			}
 		}
@@ -317,7 +335,8 @@ ON CONFLICT(device_id, start_ms) DO UPDATE SET
 // a night is attributed to a day.
 func (db *DB) SleepSessions(deviceID, fromMs, toMs int64) ([]SleepSession, error) {
 	rows, err := db.sql.Query(`
-SELECT start_ms, end_ms, awake_ms, score, start_body_battery, end_body_battery
+SELECT start_ms, end_ms, awake_ms, score, start_body_battery, end_body_battery,
+       deep_ms, light_ms, rem_ms, unmeasurable_ms
 FROM sleep_session WHERE device_id = ? AND end_ms >= ? AND end_ms < ? ORDER BY start_ms`,
 		deviceID, fromMs, toMs)
 	if err != nil {
@@ -328,7 +347,8 @@ FROM sleep_session WHERE device_id = ? AND end_ms >= ? AND end_ms < ? ORDER BY s
 	for rows.Next() {
 		var s SleepSession
 		if err := rows.Scan(&s.StartMs, &s.EndMs, &s.AwakeMs, &s.Score,
-			&s.StartBodyBattery, &s.EndBodyBattery); err != nil {
+			&s.StartBodyBattery, &s.EndBodyBattery,
+			&s.DeepMs, &s.LightMs, &s.RemMs, &s.UnmeasurableMs); err != nil {
 			return nil, err
 		}
 		out = append(out, s)

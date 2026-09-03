@@ -39,7 +39,9 @@ Item {
         PageHead {
             width: parent.width
             showBack: true
-            kicker: I18n.t("metric_detail.last_days", [Store.healthDays])
+            kicker: Store.healthDays === 1
+                    ? I18n.t("metric_detail.today")
+                    : I18n.t("metric_detail.last_days", [Store.healthDays])
             title: page.key.length ? Pulse.metricLabel(page.key) : (page.metric ? page.metric.label : "")
             onBack: page.back()
         }

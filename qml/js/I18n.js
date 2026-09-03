@@ -52,6 +52,9 @@ var DICT_EN = {
     "today.goal_beaten": "Goal beaten by %1 steps.",
     "today.steps_to_go": "%1 steps to go.",
     "today.recent_workouts": "Recent workouts",
+    "today.bb_charged": "charged",
+    "today.bb_drained": "drained",
+    "today.bb_hint": "Range %1–%2% over the day; charge is what sleep and rest gave back, drain what stress and activity took.",
     "today.no_workouts_title": "No workouts yet",
     "today.no_workouts_hint": "Record an activity on the watch, then sync to see it here.",
     "today.daemon_wait_title": "Waiting for the daemon",
@@ -102,12 +105,13 @@ var DICT_EN = {
     "health.no_history_hint": "Wear the watch through a day and sync — heart rate, Body Battery, stress, SpO₂, HRV and respiration land here.",
     "health.next_sync_hint": "Start pulsed and this page fills in on the next sync.",
     "health.deltas_hint": "Deltas compare the latest value with the average of the preceding days.",
+    "health.today": "Today",
     "health.days_7": "7 days",
-    "health.days_14": "14 days",
     "health.days_30": "30 days",
 
     // Metric Detail Page
     "metric_detail.last_days": "Last %1 days",
+    "metric_detail.today": "Today",
     "metric_detail.not_enough_history": "Not enough history",
     "metric_detail.not_enough_hint": "One data point cannot make a trend. Keep wearing the watch and sync daily.",
     "metric_detail.min": "Min",
@@ -174,19 +178,10 @@ var DICT_EN = {
     "device.weather_sub": "Answer the watch's weather requests",
     "device.notifications_title": "Forward notifications",
     "device.notifications_sub": "Send desktop notifications to the watch",
-    "device.waydroid_title": "Include Waydroid apps",
-    "device.waydroid_sub": "Also forward Android notifications from the container",
+    "device.waydroid_title": "Android notifications",
+    "device.waydroid_sub": "Forward what the Waydroid relay puts in the shade",
     "device.keep_files_title": "Keep files on watch",
     "device.keep_files_sub": "Do not delete FIT files after download",
-
-    // Notifications Page
-    "notifications.kicker": "Sent to the watch",
-    "notifications.title": "Notifications",
-    "notifications.src_desktop": "Desktop",
-    "notifications.src_waydroid": "Waydroid",
-    "notifications.src_call": "Calls",
-    "notifications.empty_title": "Nothing forwarded yet",
-    "notifications.empty_hint": "Notifications appear here the moment pulsed relays one to the watch. Check that forwarding is enabled on the Device tab.",
 
     // Pairing Sheet
     "pairing.enter_code": "Enter the code shown on the watch",
@@ -369,6 +364,9 @@ var DICT_RU = {
     "today.goal_beaten": "Цель превышена на %1 шагов.",
     "today.steps_to_go": "Осталось %1 шагов до цели.",
     "today.recent_workouts": "Недавние тренировки",
+    "today.bb_charged": "заряд",
+    "today.bb_drained": "расход",
+    "today.bb_hint": "Диапазон за день %1–%2%; заряд — то, что вернули сон и отдых, расход — то, что забрали стресс и активность.",
     "today.no_workouts_title": "Тренировок пока нет",
     "today.no_workouts_hint": "Запишите тренировку на часах и синхронизируйте их.",
     "today.daemon_wait_title": "Ожидание демона",
@@ -419,12 +417,13 @@ var DICT_RU = {
     "health.no_history_hint": "Носите часы в течение дня и синхронизируйте — пульс, Body Battery, стресс, SpO₂, ВСР и дыхание появятся здесь.",
     "health.next_sync_hint": "Запустите pulsed, и данные появятся при следующей синхронизации.",
     "health.deltas_hint": "Дельты показывают отличие последнего значения от среднего за предыдущие дни.",
+    "health.today": "Сегодня",
     "health.days_7": "7 дней",
-    "health.days_14": "14 дней",
     "health.days_30": "30 дней",
 
     // Metric Detail Page
     "metric_detail.last_days": "За %1 дн.",
+    "metric_detail.today": "Сегодня",
     "metric_detail.not_enough_history": "Недостаточно данных",
     "metric_detail.not_enough_hint": "Одно значение не показывает тренд. Носите часы и синхронизируйте ежедневно.",
     "metric_detail.min": "Мин",
@@ -491,19 +490,10 @@ var DICT_RU = {
     "device.weather_sub": "Отправлять погоду Open-Meteo на часы",
     "device.notifications_title": "Уведомления",
     "device.notifications_sub": "Пересылать системные уведомления Ubuntu Touch на часы",
-    "device.waydroid_title": "Уведомления Waydroid",
-    "device.waydroid_sub": "Пересылать уведомления Android-приложений из контейнера",
+    "device.waydroid_title": "Уведомления Android",
+    "device.waydroid_sub": "Пересылать то, что релей Waydroid положил в шторку",
     "device.keep_files_title": "Хранить файлы на часах",
     "device.keep_files_sub": "Не помечать скачанные FIT-файлы как заархивированные",
-
-    // Notifications Page
-    "notifications.kicker": "Отправлено на часы",
-    "notifications.title": "Уведомления",
-    "notifications.src_desktop": "Система",
-    "notifications.src_waydroid": "Waydroid",
-    "notifications.src_call": "Звонки",
-    "notifications.empty_title": "Уведомлений пока не было",
-    "notifications.empty_hint": "Уведомления появятся здесь, как только pulsed перешлёт их на часы. Проверьте включение пересылки во вкладке «Устройство».",
 
     // Pairing Sheet
     "pairing.enter_code": "Введите код, показанный на часах",

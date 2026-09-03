@@ -79,64 +79,103 @@ func (e *Engine) deltaSamples(fromMs, toMs int64) []store.ActivitySample {
 		return nil
 	}
 
-	// Upstream (AbstractSampleProvider.convertCumulativeSteps) keeps the first
-	// sample of the range at its full value and only rebases it when an
-	// earlier sample exists right before the window. The counter resets at
-	// midnight, so the day's first reading already is the total so far and a
-	// baseline from yesterday must never be borrowed.
-	var prev *store.ActivitySample
-	if before, err := e.db.ActivitySamples(e.deviceID, fromMs, fromMs+minute); err == nil {
-		for i := len(before) - 1; i >= 0; i-- {
-			if before[i].Steps > 0 || before[i].DistanceCm > 0 || before[i].ActiveCalories > 0 {
-				s := before[i]
-				prev = &s
-				break
-			}
-		}
+	steps := counter{loc: e.loc}
+	dist := counter{loc: e.loc}
+	cal := counter{loc: e.loc}
+
+	// The reading right before the window is the counter as it stood at
+	// midnight, so it belongs to the previous day. Seeding the state with it
+	// lets the day boundary rule below take the window's first reading whole
+	// instead of differencing it against yesterday's total.
+	if before, err := e.db.ActivitySamples(e.deviceID, fromMs, fromMs+minute); err == nil && len(before) > 0 {
+		b := before[len(before)-1]
+		steps.seed(b.TsMs-minute, b.Steps)
+		dist.seed(b.TsMs-minute, b.DistanceCm)
+		cal.seed(b.TsMs-minute, b.ActiveCalories)
 	}
 
 	out := make([]store.ActivitySample, 0, len(raw))
 	for _, s := range raw {
 		d := s
 		d.TsMs = s.TsMs - minute
-		if prev != nil {
-			d.Steps = counterDelta(prev.Steps, s.Steps)
-			d.DistanceCm = counterDelta(prev.DistanceCm, s.DistanceCm)
-			d.ActiveCalories = counterDelta(prev.ActiveCalories, s.ActiveCalories)
-		}
-		cur := s
-		if s.Steps == 0 && prev != nil && prev.Steps > 0 {
-			cur.Steps = prev.Steps
-		}
-		if s.DistanceCm == 0 && prev != nil && prev.DistanceCm > 0 {
-			cur.DistanceCm = prev.DistanceCm
-		}
-		if s.ActiveCalories == 0 && prev != nil && prev.ActiveCalories > 0 {
-			cur.ActiveCalories = prev.ActiveCalories
-		}
-		prev = &cur
+		d.Steps = steps.delta(d.TsMs, s.Steps)
+		d.DistanceCm = dist.delta(d.TsMs, s.DistanceCm)
+		d.ActiveCalories = cal.delta(d.TsMs, s.ActiveCalories)
 		out = append(out, d)
 	}
 	return out
 }
 
-// counterDelta handles the daily reset: a drop means the counter restarted.
-func counterDelta(prev, cur int) int {
-	if cur >= prev {
-		return cur - prev
+// counter differences one cumulative series the way upstream
+// AbstractSampleProvider.convertCumulativeValue does. Three rules matter:
+// a negative reading means "not measured" and contributes nothing, a drop
+// across the local day boundary is the midnight reset so the reading is
+// already the new day's total, and a drop inside a day is a reporting
+// artefact that must contribute nothing at all.
+type counter struct {
+	loc     *time.Location
+	prevMs  int64
+	prevVal int
+	seeded  bool
+}
+
+// dayBoundaryGapMs is how close two readings must be for a counter that
+// visibly kept running across midnight to be differenced instead of taken
+// whole. Anything further apart is treated as a fresh post-reset total.
+const dayBoundaryGapMs = int64(2 * 60_000)
+
+func (c *counter) seed(tsMs int64, val int) {
+	if val < 0 {
+		return
 	}
-	// If the counter dropped to 0 (unrecorded/unworn), the delta is 0, not a reset.
-	if cur == 0 {
+	c.prevMs, c.prevVal, c.seeded = tsMs, val, true
+}
+
+func (c *counter) delta(tsMs int64, val int) int {
+	if val < 0 {
+		// Not measured: no contribution, and the base must not move.
 		return 0
 	}
-	return cur
+	if !c.seeded {
+		c.prevMs, c.prevVal, c.seeded = tsMs, val, true
+		return val
+	}
+	prevMs, prev := c.prevMs, c.prevVal
+	c.prevMs = tsMs
+	switch {
+	case !sameLocalDay(prevMs, tsMs, c.loc):
+		c.prevVal = val
+		if prev > 0 && val >= prev && tsMs-prevMs <= dayBoundaryGapMs {
+			return val - prev
+		}
+		return val
+	case val < prev:
+		// The watch left an activity type out of this minute's report, or an
+		// older importer stored a partial sum: a running total cannot fall.
+		// Credit nothing and keep differencing from the high-water mark -
+		// rebasing down here would credit the recovered part a second time,
+		// which is what inflated active calories several times over.
+		return 0
+	default:
+		c.prevVal = val
+		return val - prev
+	}
+}
+
+func sameLocalDay(aMs, bMs int64, loc *time.Location) bool {
+	if loc == nil {
+		loc = time.Local
+	}
+	ay, am, ad := time.UnixMilli(aMs).In(loc).Date()
+	by, bm, bd := time.UnixMilli(bMs).In(loc).Date()
+	return ay == by && am == bm && ad == bd
 }
 
 // Totals is the movement summary of one day.
 type Totals struct {
 	Steps          int
 	DistanceCm     int
-	ActiveCalories int // raw units, 1/1000 kcal after the upstream conversion
+	ActiveCalories int // kcal, as the watch reports them (FIT active_calories)
 	ActiveMinutes  int
 	HeartRateMin   int
 	HeartRateMax   int
@@ -184,7 +223,7 @@ type Today struct {
 	TotalCalories    int          `json:"totalCalories"`
 	ActiveMinutes    int          `json:"activeMinutes"`
 	HeartRate        MinMaxLatest `json:"heartRate"`
-	BodyEnergy       MinMaxLatest `json:"bodyEnergy"`
+	BodyEnergy       BodyEnergy   `json:"bodyEnergy"`
 	Stress           AvgLatest    `json:"stress"`
 	Spo2             Latest       `json:"spo2"`
 	Respiration      LatestFloat  `json:"respiration"`
@@ -201,6 +240,33 @@ type MinMaxLatest struct {
 	Min     int `json:"min"`
 	Max     int `json:"max"`
 }
+
+// BodyEnergy is the body battery of one day: where it stands now, the range it
+// covered, how much of it was gained and spent, and the curve itself.
+//
+// Charged and Drained are the sums of the positive and negative steps of the
+// stored series, which is how the watch's own "charged / drained" numbers are
+// built: a night of sleep charges, a stressful hour drains, and the two do not
+// cancel out in the daily figure.
+type BodyEnergy struct {
+	Latest  int `json:"latest"`
+	Min     int `json:"min"`
+	Max     int `json:"max"`
+	Charged int `json:"charged"`
+	Drained int `json:"drained"`
+	// StartMs is the timestamp of the first bucket and StepMs its width, so
+	// the UI can label the axis without shipping a timestamp per point.
+	StartMs int64 `json:"startMs"`
+	StepMs  int64 `json:"stepMs"`
+	// Series holds one value per bucket, null where the watch recorded
+	// nothing (not worn, or the day has not reached that hour yet).
+	Series []*int `json:"series"`
+}
+
+// bodyEnergyBuckets is the resolution of the intraday curve: 15 minutes, which
+// is fine enough to show the shape of a day and small enough to ship inside
+// the dashboard payload.
+const bodyEnergyBuckets = 96
 
 type AvgLatest struct {
 	Latest int `json:"latest"`
@@ -245,8 +311,8 @@ func (e *Engine) Today(day time.Time) Today {
 		Steps:     totals.Steps,
 		StepsGoal: e.settings.StepsGoal,
 		DistanceM: float64(totals.DistanceCm) / 100.0,
-		// Stored active calories are kcal; upstream multiplies by 1000 on read
-		// and divides again for display, so keep kcal here.
+		// FIT active_calories is already kcal without the basal rate, so it
+		// travels to the UI unscaled.
 		ActiveCalories: totals.ActiveCalories,
 		ActiveMinutes:  totals.ActiveMinutes,
 		HeartRate: MinMaxLatest{
@@ -274,18 +340,7 @@ func (e *Engine) Today(day time.Time) Today {
 		t.HeartRate.Resting = int(p.Value)
 	}
 
-	if pts, err := e.db.Series("body_energy", e.deviceID, from, to); err == nil && len(pts) > 0 {
-		t.BodyEnergy.Latest = int(pts[len(pts)-1].Value)
-		t.BodyEnergy.Min, t.BodyEnergy.Max = int(pts[0].Value), int(pts[0].Value)
-		for _, p := range pts {
-			if int(p.Value) < t.BodyEnergy.Min {
-				t.BodyEnergy.Min = int(p.Value)
-			}
-			if int(p.Value) > t.BodyEnergy.Max {
-				t.BodyEnergy.Max = int(p.Value)
-			}
-		}
-	}
+	t.BodyEnergy = e.bodyEnergyDay(from, to)
 	if pts, err := e.db.Series("stress", e.deviceID, from, to); err == nil && len(pts) > 0 {
 		sum := 0.0
 		for _, p := range pts {
@@ -322,6 +377,62 @@ func (e *Engine) Today(day time.Time) Today {
 	t.IntensityMinutes = e.intensity(day)
 	t.Streak = e.streak(day)
 	return t
+}
+
+// bodyEnergyDay builds the intraday body battery curve for one local day.
+//
+// Samples arrive every few minutes, so they are averaged into fixed buckets:
+// the curve keeps its shape, the payload stays small and a bucket with no
+// sample stays null instead of dropping the line to zero. Charge and drain are
+// summed from the raw samples, not the buckets, so short dips are not averaged
+// away.
+func (e *Engine) bodyEnergyDay(fromMs, toMs int64) BodyEnergy {
+	out := BodyEnergy{
+		StartMs: fromMs,
+		StepMs:  (toMs - fromMs) / bodyEnergyBuckets,
+		Series:  make([]*int, bodyEnergyBuckets),
+	}
+	pts, err := e.db.Series("body_energy", e.deviceID, fromMs, toMs)
+	if err != nil || len(pts) == 0 {
+		return out
+	}
+
+	sums := make([]int, bodyEnergyBuckets)
+	counts := make([]int, bodyEnergyBuckets)
+	prev := int(math.Round(pts[0].Value))
+	out.Min, out.Max = prev, prev
+	for _, p := range pts {
+		v := int(math.Round(p.Value))
+		if v < out.Min {
+			out.Min = v
+		}
+		if v > out.Max {
+			out.Max = v
+		}
+		if d := v - prev; d > 0 {
+			out.Charged += d
+		} else {
+			out.Drained -= d
+		}
+		prev = v
+
+		slot := int((p.TsMs - fromMs) / out.StepMs)
+		if slot < 0 || slot >= bodyEnergyBuckets {
+			continue
+		}
+		sums[slot] += v
+		counts[slot]++
+	}
+	out.Latest = prev
+
+	for i := range out.Series {
+		if counts[i] == 0 {
+			continue
+		}
+		v := int(math.Round(float64(sums[i]) / float64(counts[i])))
+		out.Series[i] = &v
+	}
+	return out
 }
 
 func (e *Engine) intensity(day time.Time) Intensity {
@@ -428,8 +539,12 @@ type SleepReport struct {
 	// it equals deep+light+rem; without it, it comes from the watch's own
 	// nightly summary, which is all some devices provide.
 	AsleepMinutes int `json:"asleepMinutes"`
-	// HasStages tells the UI whether a hypnogram and a stage breakdown exist.
-	HasStages        bool             `json:"hasStages"`
+	// HasStages tells the UI whether a hypnogram can be drawn.
+	HasStages bool `json:"hasStages"`
+	// HasBreakdown tells the UI whether per-stage minutes exist. Stage samples
+	// imply them, but a watch that only reports SLEEP_SUMMARY gives the
+	// minutes without any hypnogram.
+	HasBreakdown     bool             `json:"hasBreakdown"`
 	StartBodyBattery int              `json:"startBodyBattery"`
 	EndBodyBattery   int              `json:"endBodyBattery"`
 	Stages           []SleepStageSpan `json:"stages"`
@@ -490,7 +605,7 @@ func (e *Engine) Sleep(day time.Time) SleepReport {
 	rep.StartMs = rep.Stages[0].StartMs
 	rep.EndMs = rep.Stages[len(rep.Stages)-1].EndMs
 	rep.Totals = stageTotals(rep.Stages)
-	rep.HasStages = true
+	rep.HasStages, rep.HasBreakdown = true, true
 	rep.AsleepMinutes = rep.Totals.Deep + rep.Totals.Light + rep.Totals.REM
 	if sess, err := e.db.SleepSessions(e.deviceID, from, to); err == nil && len(sess) > 0 {
 		s := sess[len(sess)-1]
@@ -531,20 +646,22 @@ func (e *Engine) Sleep(day time.Time) SleepReport {
 	return rep
 }
 
-// sleepFromSummary builds the report when no per-stage data exists. The watch
-// still reports the night itself (FIT DAILY_SLEEP): window, awake time and its
-// own score. Without stages there is no hypnogram, and HasStages stays false so
-// the UI can say so instead of drawing an empty graph.
+// sleepFromSummary builds the report when no per-stage samples exist. The
+// watch still reports the night itself: DAILY_SLEEP gives the window, awake
+// time, score and body battery, and SLEEP_SUMMARY adds the stage minutes.
+// HasStages stays false either way, so the UI says there is no hypnogram
+// instead of drawing an empty graph.
 func (e *Engine) sleepFromSummary(day time.Time, from, to int64) SleepReport {
 	rep := SleepReport{Trend: e.sleepTrend(day)}
 
-	sessions, err := e.db.SleepSessions(e.deviceID, from, to)
-	if err != nil || len(sessions) == 0 {
+	stored, err := e.db.SleepSessions(e.deviceID, from, to)
+	if err != nil || len(stored) == 0 {
 		rep.Quality = qualityLabel(0)
 		return rep
 	}
-	// Several summaries can land in one window when the watch revises a night;
-	// the last one wins, and shorter ones are daytime naps.
+	sessions := mergeSessions(stored)
+	// Several summaries can land in one window when the watch revises a
+	// night; the longest one is the night and shorter ones are daytime naps.
 	main := 0
 	for i, s := range sessions {
 		if s.EndMs-s.StartMs > sessions[main].EndMs-sessions[main].StartMs {
@@ -562,12 +679,29 @@ func (e *Engine) sleepFromSummary(day time.Time, from, to int64) SleepReport {
 	rep.AsleepMinutes = total - awake
 	rep.Totals.Awake = awake
 
+	// SLEEP_SUMMARY minutes: a breakdown without a hypnogram.
+	deep := int(s.DeepMs / 60000)
+	light := int(s.LightMs / 60000)
+	rem := int(s.RemMs / 60000)
+	if deep+light+rem > 0 {
+		rep.Totals.Deep, rep.Totals.Light, rep.Totals.REM = deep, light, rem
+		rep.AsleepMinutes = deep + light + rem
+		rep.HasBreakdown = true
+	}
+
 	for i, n := range sessions {
 		if i == main {
 			continue
 		}
 		if m := int((n.EndMs - n.StartMs) / 60000); m >= 10 {
 			rep.Naps = append(rep.Naps, NapSpan{StartMs: n.StartMs, EndMs: n.EndMs, Minutes: m})
+		}
+	}
+	if naps, err := e.db.Naps(e.deviceID, from, to); err == nil {
+		for _, n := range naps {
+			rep.Naps = append(rep.Naps, NapSpan{
+				StartMs: n.StartMs, EndMs: n.EndMs, Minutes: int((n.EndMs - n.StartMs) / 60000),
+			})
 		}
 	}
 
@@ -585,6 +719,35 @@ func (e *Engine) sleepFromSummary(day time.Time, from, to int64) SleepReport {
 		}
 	}
 	return rep
+}
+
+// mergeSessions folds summaries of the same night into one row. The watch
+// describes a night twice - DAILY_SLEEP for score and body battery,
+// SLEEP_SUMMARY for the stage minutes - with slightly different bounds and
+// from different files, so overlapping windows are unioned and every value
+// taken at its maximum. Without this the report could pick the copy that
+// carries no breakdown.
+func mergeSessions(in []store.SleepSession) []store.SleepSession {
+	out := make([]store.SleepSession, 0, len(in))
+	for _, s := range in {
+		if len(out) > 0 {
+			m := &out[len(out)-1]
+			if s.StartMs < m.EndMs {
+				m.EndMs = max(m.EndMs, s.EndMs)
+				m.AwakeMs = max(m.AwakeMs, s.AwakeMs)
+				m.DeepMs = max(m.DeepMs, s.DeepMs)
+				m.LightMs = max(m.LightMs, s.LightMs)
+				m.RemMs = max(m.RemMs, s.RemMs)
+				m.UnmeasurableMs = max(m.UnmeasurableMs, s.UnmeasurableMs)
+				m.Score = max(m.Score, s.Score)
+				m.StartBodyBattery = max(m.StartBodyBattery, s.StartBodyBattery)
+				m.EndBodyBattery = max(m.EndBodyBattery, s.EndBodyBattery)
+				continue
+			}
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 func splitSessions(spans []SleepStageSpan, maxGapMs int64) [][]SleepStageSpan {
@@ -750,7 +913,9 @@ var healthMetrics = []metricSpec{
 	{"sleep", "", "Sleep", "min"},
 }
 
-// Health returns daily aggregates for the last n days.
+// Health returns daily aggregates for the last n days. With n == 1 the series
+// is just today, so the delta is taken against yesterday — otherwise every
+// card would show a change of zero.
 func (e *Engine) Health(days int, ref time.Time) []Metric {
 	if days <= 0 {
 		days = 7
@@ -760,43 +925,52 @@ func (e *Engine) Health(days int, ref time.Time) []Metric {
 		m := Metric{Key: spec.key, Label: spec.label, Unit: spec.unit}
 		for i := days - 1; i >= 0; i-- {
 			d := ref.AddDate(0, 0, -i)
-			from, to := e.DayWindow(d)
-			var value float64
-			switch spec.key {
-			case "heart_rate":
-				t := e.DayTotals(d)
-				if t.HeartRateMax > 0 {
-					value = float64(t.HeartRateMin+t.HeartRateMax) / 2
-				}
-			case "steps":
-				value = float64(e.DayTotals(d).Steps)
-			case "intensity":
-				if items, err := e.db.IntensityMinutes(e.deviceID, from, to); err == nil {
-					for _, it := range items {
-						value += float64(it.Moderate + 2*it.Vigorous)
-					}
-				}
-			case "sleep":
-				s := e.Sleep(d)
-				value = float64(s.Totals.Deep + s.Totals.Light + s.Totals.REM)
-			default:
-				if pts, err := e.db.Series(spec.series, e.deviceID, from, to); err == nil && len(pts) > 0 {
-					sum := 0.0
-					for _, p := range pts {
-						sum += p.Value
-					}
-					value = sum / float64(len(pts))
-				}
-			}
-			m.Series = append(m.Series, store.Point{TsMs: from, Value: math.Round(value*10) / 10})
+			from, _ := e.DayWindow(d)
+			m.Series = append(m.Series, store.Point{TsMs: from, Value: e.metricValue(spec, d)})
 		}
 		if n := len(m.Series); n > 0 {
 			m.Latest = m.Series[n-1].Value
-			if n > 1 {
+			switch {
+			case n > 1:
 				m.Delta = m.Latest - m.Series[n-2].Value
+			default:
+				m.Delta = m.Latest - e.metricValue(spec, ref.AddDate(0, 0, -1))
 			}
 		}
 		out = append(out, m)
 	}
 	return out
+}
+
+// metricValue is one health card's value for one local day.
+func (e *Engine) metricValue(spec metricSpec, d time.Time) float64 {
+	from, to := e.DayWindow(d)
+	var value float64
+	switch spec.key {
+	case "heart_rate":
+		t := e.DayTotals(d)
+		if t.HeartRateMax > 0 {
+			value = float64(t.HeartRateMin+t.HeartRateMax) / 2
+		}
+	case "steps":
+		value = float64(e.DayTotals(d).Steps)
+	case "intensity":
+		if items, err := e.db.IntensityMinutes(e.deviceID, from, to); err == nil {
+			for _, it := range items {
+				value += float64(it.Moderate + 2*it.Vigorous)
+			}
+		}
+	case "sleep":
+		s := e.Sleep(d)
+		value = float64(s.Totals.Deep + s.Totals.Light + s.Totals.REM)
+	default:
+		if pts, err := e.db.Series(spec.series, e.deviceID, from, to); err == nil && len(pts) > 0 {
+			sum := 0.0
+			for _, p := range pts {
+				sum += p.Value
+			}
+			value = sum / float64(len(pts))
+		}
+	}
+	return math.Round(value*10) / 10
 }

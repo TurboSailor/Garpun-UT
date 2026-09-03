@@ -31,6 +31,12 @@ const (
 // ErrNotFound is returned when a requested BlueZ object does not exist.
 var ErrNotFound = errors.New("ble: object not found")
 
+// ErrNotConnected marks an operation that failed because the ACL link is
+// gone. It is the one write error callers must treat as fatal: BlueZ keeps the
+// GATT objects of a bonded device around, so writing to a watch that walked
+// away fails with this forever until the link is re-established.
+var ErrNotConnected = errors.New("ble: not connected")
+
 type objectMap map[dbus.ObjectPath]map[string]map[string]dbus.Variant
 
 // Bus is a shared connection to bluetoothd with a cached object tree and a

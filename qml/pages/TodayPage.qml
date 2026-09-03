@@ -9,7 +9,6 @@ import "../js/I18n.js" as I18n
 Item {
     id: page
 
-    signal openNotifications()
     signal openWorkout(var workout)
     signal openTab(string key)
 
@@ -45,6 +44,17 @@ Item {
         return (v === undefined || v === null) ? 0 : v;
     }
 
+    // Body battery through the day: /api/today ships one value per 15 minute
+    // bucket, null where the watch recorded nothing.
+    readonly property var bodyBattery: t && t.bodyEnergy ? t.bodyEnergy : null
+    readonly property var bodyBatterySeries: bodyBattery && bodyBattery.series ? bodyBattery.series : []
+    readonly property int bodyBatteryPoints: {
+        var s = bodyBatterySeries, n = 0;
+        for (var i = 0; i < s.length; i++)
+            if (s[i] !== null && s[i] !== undefined) n++;
+        return n;
+    }
+
     readonly property real steps: num("steps", 0)
     readonly property real stepsGoal: goal("steps")
     readonly property real stepFactor: stepsGoal > 0 ? steps / stepsGoal : 0
@@ -56,9 +66,6 @@ Item {
             width: parent.width
             kicker: Fmt.prettyDate(Store.date)
             title: Fmt.greeting(new Date().getHours())
-            trailingGlyph: "bell"
-            trailingBadge: Store.notifications ? Store.notifications.length : 0
-            onTrailing: page.openNotifications()
         }
 
         DateNav { width: parent.width }
@@ -269,6 +276,119 @@ Item {
                          : I18n.t("sleep.no_night_title")
                 factor: page.num("sleepMinutes", 0) / page.goal("sleepMinutes")
                 onClicked: page.openTab("sleep")
+            }
+        }
+
+        // ---- body battery through the day --------------------------------
+        SectionTitle {
+            width: parent.width
+            visible: page.bodyBatteryPoints > 1
+            text: Pulse.metricLabel("body_energy")
+            glyph: "battery"
+            action: I18n.t("action.see_all")
+            onActionTriggered: page.openTab("health")
+        }
+
+        Card {
+            width: parent.width
+            visible: page.bodyBatteryPoints > 1
+            padding: Pulse.l
+
+            Item {
+                width: parent.width
+                height: units.gu(4)
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: units.dp(3)
+
+                    Label {
+                        id: bbNow
+                        text: page.sub("bodyEnergy", "latest") > 0 ? "" + page.sub("bodyEnergy", "latest") : "\u2013"
+                        color: Pulse.mint
+                        font.family: Pulse.face
+                        font.pixelSize: Pulse.title
+                        font.weight: Font.Light
+                    }
+                    Label {
+                        anchors.baseline: bbNow.baseline
+                        text: "%"
+                        color: Pulse.textDim
+                        font.family: Pulse.face
+                        font.pixelSize: Pulse.caption
+                    }
+                }
+
+                Column {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 0
+
+                    Label {
+                        anchors.right: parent.right
+                        text: "+" + page.sub("bodyEnergy", "charged") + " " + I18n.t("today.bb_charged")
+                        color: Pulse.mint
+                        font.family: Pulse.face
+                        font.pixelSize: Pulse.caption
+                    }
+                    Label {
+                        anchors.right: parent.right
+                        text: "\u2212" + page.sub("bodyEnergy", "drained") + " " + I18n.t("today.bb_drained")
+                        color: Pulse.ringHr
+                        font.family: Pulse.face
+                        font.pixelSize: Pulse.caption
+                    }
+                }
+            }
+
+            SeriesChart {
+                width: parent.width
+                height: units.gu(13)
+                values: page.bodyBatterySeries
+                hue: Pulse.mint
+                unit: "%"
+            }
+
+            // Axis labels are anchored, not spaced: a Row of fixed struts
+            // walks off the edge on a narrow screen.
+            Item {
+                width: parent.width
+                height: units.gu(2)
+
+                Label {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "00:00"
+                    color: Pulse.textDim
+                    font.family: Pulse.face
+                    font.pixelSize: Pulse.micro
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "12:00"
+                    color: Pulse.textDim
+                    font.family: Pulse.face
+                    font.pixelSize: Pulse.micro
+                }
+                Label {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "24:00"
+                    color: Pulse.textDim
+                    font.family: Pulse.face
+                    font.pixelSize: Pulse.micro
+                }
+            }
+
+            Label {
+                width: parent.width
+                text: I18n.t("today.bb_hint", [page.sub("bodyEnergy", "min"), page.sub("bodyEnergy", "max")])
+                color: Pulse.textDim
+                font.family: Pulse.face
+                font.pixelSize: Pulse.micro
+                wrapMode: Text.WordWrap
             }
         }
 
