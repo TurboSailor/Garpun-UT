@@ -5,6 +5,8 @@
 Оригинал Android (`cc.zachy.pulse`) здесь не хранится; это нативная переписка
 под пакетом `pulse.turbosailor`:
 
+https://i.ibb.co/5xtcmN85/screenshot20260903-211143538.png
+
 | Слой | Технология |
 |---|---|
 | Демон `pulsed` | Go · BLE через BlueZ D-Bus · протокол Garmin GFDI · парсер/энкодер FIT · SQLite |
